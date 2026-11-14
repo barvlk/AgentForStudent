@@ -54,8 +54,11 @@ def load_streamlit_secrets() -> None:
     """
     try:
         secrets = dict(st.secrets)
-    except Exception:  # noqa: BLE001 — لا يوجد ملف secrets (تشغيل محلي بملف .env)
+    except Exception as exc:  # noqa: BLE001 — لا يوجد ملف secrets (تشغيل محلي بملف .env)
+        st.session_state["_secrets_status"] = f"تعذر قراءة Secrets: {type(exc).__name__}"
         return
+    # أسماء المفاتيح فقط (بدون القيم) لتشخيص مشاكل النشر
+    st.session_state["_secrets_status"] = "المفاتيح الموجودة في Secrets: " + (", ".join(sorted(secrets)) or "لا شيء")
     for key, value in secrets.items():
         if isinstance(value, (str, int, float, bool)) and key not in os.environ:
             os.environ[key] = str(value)
@@ -398,6 +401,8 @@ def main() -> None:
             "على Streamlit Cloud: تأكد أن Secrets فيها `AFS_PUBLIC_DEMO = \"true\"` و `DATA_ENCRYPTION_KEY` "
             "ثم أعد تشغيل التطبيق (Manage app ← Reboot app)."
         )
+        if status := st.session_state.get("_secrets_status"):
+            st.caption(f"🔎 تشخيص: {status}")
         st.stop()
 
     enforce_session_timeout(services.settings.session_timeout_minutes)
