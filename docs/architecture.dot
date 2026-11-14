@@ -1,0 +1,37 @@
+// AgentForStudent Architecture
+digraph {
+	fontname=Arial rankdir=LR size="12,8"
+	node [fillcolor=white fontname=Arial fontsize=12 shape=box style="rounded,filled"]
+	Req [label="Student Request
+(Subjects, Exams, Tasks, ID: 446006609)"]
+	Setup [label="Setup & Environment
+(.env keys, Excel path: tasks.xlsx)"]
+	Run [label="Run Variation
+(Gemini API + Retry Wrapper 429)"]
+	subgraph cluster_crew {
+		color=gray fillcolor="#f9f9f9" label="AgentForStudent Workflow Core" style=rounded
+		Profile [label="Profile
+(Student BKT State)"]
+		Gen [label="Generate
+(RAG & Content)"]
+		Critique [label="Critique
+(Verify Constraints)"]
+		Opt [label="Optimize
+(SJF / Priority Score)"]
+		Profile -> Gen
+		Gen -> Critique
+		Critique -> Opt
+	}
+	Tools [label="Support Tools
+(RAG Search, Priority Scheduler, Safe Calc)"]
+	Result [label="Structured Results
+(Priority Report & Study Plan)"]
+	Examples [label="Examples
+(Sample Inputs & Outputs)"]
+	Req -> Run
+	Setup -> Run [style=dashed]
+	Run -> Profile
+	Tools -> Gen [style=dashed]
+	Opt -> Result
+	Examples -> Result [constraint=false style=dashed]
+}

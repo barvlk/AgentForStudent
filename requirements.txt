@@ -1,0 +1,10 @@
+bcrypt>=4.1
+cryptography>=42
+google-genai>=1.0
+numpy>=1.26
+openpyxl>=3.1
+pandas>=2.1
+python-dotenv>=1.0
+scikit-learn>=1.4
+streamlit>=1.46
+tenacity>=8.2
