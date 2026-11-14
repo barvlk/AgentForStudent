@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from datetime import date
 
@@ -45,8 +46,25 @@ QUICK_PROMPTS = {
 # ---------------------------------------------------------------------------
 # التهيئة
 # ---------------------------------------------------------------------------
+def load_streamlit_secrets() -> None:
+    """نقل Secrets (في Streamlit Cloud) إلى متغيرات البيئة حتى تقرأها طبقة الإعدادات.
+
+    Streamlit لا يضع الأسرار في متغيرات البيئة إلا بعد أول قراءة لـ st.secrets،
+    وطبقة الإعدادات تقرأ من os.environ، فنقرأها هنا صراحةً قبل تحميل الإعدادات.
+    """
+    try:
+        secrets = dict(st.secrets)
+    except Exception:  # noqa: BLE001 — لا يوجد ملف secrets (تشغيل محلي بملف .env)
+        return
+    for key, value in secrets.items():
+        if isinstance(value, (str, int, float, bool)) and key not in os.environ:
+            os.environ[key] = str(value)
+    get_settings.cache_clear()
+
+
 @st.cache_resource(show_spinner="جاري تهيئة النظام وتدريب نموذج التنبؤ...")
 def get_services() -> AppServices:
+    load_streamlit_secrets()
     setup_logging()
     services = AppServices(get_settings())
     services.bootstrap_public_demo()  # على السيرفر العام: بيانات وهمية تلقائياً
@@ -375,7 +393,11 @@ def main() -> None:
         services = get_services()
     except (ConfigError, DataSourceError) as exc:
         st.error(f"خطأ في إعداد النظام: {exc}")
-        st.info("راجع ملف README.md (قسم التشغيل لأول مرة).")
+        st.info(
+            "محلياً: شغّل `python main.py setup` أو `python main.py setup --demo`.\n\n"
+            "على Streamlit Cloud: تأكد أن Secrets فيها `AFS_PUBLIC_DEMO = \"true\"` و `DATA_ENCRYPTION_KEY` "
+            "ثم أعد تشغيل التطبيق (Manage app ← Reboot app)."
+        )
         st.stop()
 
     enforce_session_timeout(services.settings.session_timeout_minutes)
