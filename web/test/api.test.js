@@ -92,7 +92,7 @@ test('chat answers ANY typed message, not only preset prompts', async () => {
   assert.match((await ask('سوي لي خطة 15 ساعة')).reply, /15 ساعة/);
   assert.match((await ask('كم يساوي 12*(3+4)')).reply, /84/);
   assert.match((await ask('اشرح لي شجرة البحث الثنائية')).reply, /BST/);
-  assert.match((await ask('هلا')).reply, /هلا/);
+  assert.match((await ask('هلا')).reply, /أهلاً/);
   const unknown = await ask('qwerty zzz');
   assert.ok(unknown.reply.length > 10 && unknown.mode === 'local');
   assert.equal((await call('POST', '/api/chat', { message: '   ' }, c)).status, 400);

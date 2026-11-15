@@ -1,43 +1,42 @@
 // نقطة الدخول: الحالة العامة + التوجيه بين الصفحات.
 import { api, ApiError, setUnauthorizedHandler } from './api.js';
 import { esc, $, $$, toast } from './ui.js';
+import { icon } from './icons.js';
 import { renderLogin, renderChangePassword } from './login.js';
 import { renderDashboard } from './dashboard.js';
 import { renderTasks } from './tasks.js';
 import { renderChat, resetChat } from './chat.js';
 
 const app = $('#app');
-const state = { me: null, tab: 'chat', flash: null };
+const initialTab = location.hash.slice(1);
+const state = { me: null, tab: ['dashboard', 'tasks', 'chat'].includes(initialTab) ? initialTab : 'dashboard', flash: null, notified: false };
 
-// الثيم: يُحفظ تفضيل المستخدم (ويُتجاهل إن تعذر التخزين)
-try { document.documentElement.dataset.theme = localStorage.getItem('afs-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); } catch { /* ignore */ }
-function toggleTheme() {
-  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  try { localStorage.setItem('afs-theme', next); } catch { /* ignore */ }
-}
-
-setUnauthorizedHandler((msg) => { if (state.me) { state.me = null; resetChat(); state.flash = msg || 'انتهت الجلسة. سجّل دخولك مرة أخرى.'; boot(); } });
+setUnauthorizedHandler((msg) => { if (state.me) { state.me = null; resetChat(); state.flash = msg || 'انتهت الجلسة. الرجاء تسجيل الدخول مرة أخرى.'; boot(); } });
 
 const TABS = [
-  ['chat', '💬', 'المساعد الذكي'],
-  ['dashboard', '📊', 'لوحة الأداء'],
-  ['tasks', '📅', 'المهام'],
+  ['dashboard', 'chart', 'لوحة الأداء'],
+  ['tasks', 'calendar', 'المهام'],
+  ['chat', 'chat', 'المساعد'],
 ];
-const TITLES = { chat: 'المساعد الذكي', dashboard: 'لوحة الأداء', tasks: 'مهامي' };
+const TITLES = { chat: 'المساعد الأكاديمي', dashboard: 'لوحة الأداء الأكاديمي', tasks: 'المهام والمواعيد' };
+const SUBTITLES = {
+  chat: 'اطرح سؤالك حول مهامك أو مستواك أو أي مفهوم دراسي',
+  dashboard: 'تحليل الأداء الدراسي وتوقعات الفصل القادم',
+  tasks: 'مرتبة حسب درجة الأولوية',
+};
 
 async function boot() {
   try {
     state.me = await api.me();
   } catch (e) {
     state.me = null;
-    if (e instanceof ApiError && e.status === 0) { app.innerHTML = `<div class="empty"><span>🔌</span>${esc(e.message)}</div>`; return; }
+    if (e instanceof ApiError && e.status === 0) { app.innerHTML = `<div class="empty"><span class="big">${icon('alert')}</span>${esc(e.message)}</div>`; return; }
   }
   if (!state.me) {
     const flash = state.flash; state.flash = null;
     return renderLogin(app, { flash, onLoggedIn: () => boot() });
   }
-  if (state.me.must_change_password) return renderChangePassword(app, { forced: true, onDone: () => { state.flash = 'تم تغيير كلمة المرور. سجّل دخولك من جديد.'; boot(); } });
+  if (state.me.must_change_password) return renderChangePassword(app, { forced: true, onDone: () => { state.flash = 'تم تغيير كلمة المرور. الرجاء تسجيل الدخول مجدداً.'; boot(); } });
   renderShell();
 }
 
@@ -46,34 +45,32 @@ function renderShell() {
   app.innerHTML = `
   <div class="shell">
     <aside class="sidebar">
-      <div class="logo"><b>🎓</b><span>AgentForStudent</span></div>
+      <div class="brand"><div class="logo"><b>${icon('book')}</b><span>جامعة أم القرى<small>نظام المساعد الأكاديمي</small></span></div></div>
       <div class="profile"><div class="avatar">${esc(profile.first_name[0])}</div><div><h4>${esc(profile.name)}</h4><small>${esc(profile.level)}</small></div></div>
-      <nav class="nav" aria-label="التنقل">${TABS.map(([k, i, l]) => `<button data-tab="${k}">${i}<span>${l}</span><span class="badge" id="badge-${k}" hidden></span></button>`).join('')}</nav>
+      <nav class="nav" aria-label="التنقل">${TABS.map(([k, i, l]) => `<button data-tab="${k}">${icon(i)}<span>${l}</span><span class="badge" id="badge-${k}" hidden></span></button>`).join('')}</nav>
       <div class="side-foot">
         <div class="status">
-          <div><span class="dot ${state.me.ai ? '' : 'off'}"></span>${state.me.ai ? 'Gemini متصل' : 'المحرك المحلي'}</div>
-          <div><span class="dot"></span>نموذج التنبؤ جاهز</div>
-          <div>🔒 جلسة آمنة · كلمات مرور مشفّرة</div>
+          <div><span class="dot ${state.me.ai ? '' : 'off'}"></span>${state.me.ai ? 'الذكاء الاصطناعي: متصل' : 'المساعد: الوضع المحلي'}</div>
+          <div><span class="dot"></span>نموذج التنبؤ: جاهز</div>
         </div>
-        ${state.me.is_demo ? '' : '<button class="btn sm" id="chg-pw">🔑 تغيير كلمة المرور</button>'}
-        <div style="display:flex;gap:.5rem"><button class="btn sm" id="theme" style="flex:1" aria-label="تبديل الثيم">🌓 الثيم</button><button class="btn sm danger" id="logout" style="flex:1">🚪 خروج</button></div>
+        ${state.me.is_demo ? '' : `<button class="btn sm" id="chg-pw">${icon('key')} تغيير كلمة المرور</button>`}
+        <button class="btn sm" id="logout">${icon('logout')} تسجيل الخروج</button>
       </div>
     </aside>
     <main class="main">
       <header class="topbar">
         <div><h1 id="title"></h1><p id="subtitle"></p></div>
-        <div class="chip" title="المعدل التراكمي">📈 المعدل ${profile.gpa.toFixed(2)} / 4.00</div>
+        <div class="chip" title="المعدل التراكمي">المعدل التراكمي: <span dir="ltr">${profile.gpa.toFixed(2)} / 4.00</span></div>
       </header>
       <section id="view"></section>
     </main>
-    <nav class="mobile-nav" aria-label="التنقل">${TABS.map(([k, i, l]) => `<button data-tab="${k}"><span>${i}</span>${l}</button>`).join('')}
-      <button id="m-menu"><span>⚙️</span>المزيد</button></nav>
+    <nav class="mobile-nav" aria-label="التنقل">${TABS.map(([k, i, l]) => `<button data-tab="${k}">${icon(i)}${l}</button>`).join('')}
+      <button id="m-menu">${icon('logout')}خروج</button></nav>
   </div>`;
 
   $$('[data-tab]').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
   $('#logout').onclick = logout;
-  $('#theme').onclick = toggleTheme;
-  $('#chg-pw')?.addEventListener('click', () => renderChangePassword(app, { forced: false, onDone: () => { state.flash = 'تم تغيير كلمة المرور. سجّل دخولك من جديد.'; boot(); }, onCancel: renderShell }));
+  $('#chg-pw')?.addEventListener('click', () => renderChangePassword(app, { forced: false, onDone: () => { state.flash = 'تم تغيير كلمة المرور. الرجاء تسجيل الدخول مجدداً.'; boot(); }, onCancel: renderShell }));
   $('#m-menu').onclick = () => { if (confirm('تسجيل الخروج؟')) logout(); };
   go(state.tab);
   updateBadge();
@@ -82,12 +79,11 @@ function renderShell() {
 async function updateBadge() {
   try {
     const { tasks } = await api.tasks();
-    const urgent = tasks.filter((t) => t.overdue || (t.days_left != null && t.days_left <= 2)).length;
-    $$('#badge-tasks').forEach((b) => { b.hidden = !urgent; b.textContent = urgent; });
+    const urgentList = tasks.filter((t) => t.overdue || (t.days_left != null && t.days_left <= 2));
+    $$('#badge-tasks').forEach((b) => { b.hidden = !urgentList.length; b.textContent = urgentList.length; });
     if (!state.notified) {
       state.notified = true;
-      tasks.filter((t) => t.overdue || (t.days_left != null && t.days_left <= 2)).slice(0, 3)
-        .forEach((t) => toast(`🚨 ${t.task.title} — ${t.task.course} (${t.due_label})`, 'warn'));
+      urgentList.slice(0, 3).forEach((t) => toast(`تنبيه: ${t.task.title} — ${t.task.course} (${t.due_label})`, 'warn'));
     }
   } catch { /* ignore */ }
 }
@@ -96,8 +92,8 @@ async function go(tab) {
   state.tab = tab;
   $$('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   $('#title').textContent = TITLES[tab];
+  $('#subtitle').textContent = SUBTITLES[tab];
   const { profile } = state.me;
-  $('#subtitle').textContent = tab === 'chat' ? `أهلاً ${profile.first_name}، اسألني أي شي` : tab === 'dashboard' ? 'تحليل أدائك الأكاديمي بالذكاء الاصطناعي' : 'مرتبة حسب الأولوية الذكية';
   const view = $('#view');
   try {
     if (tab === 'chat') renderChat(view, { profile, ai: state.me.ai });

@@ -29,9 +29,9 @@ export function sparkline(values, color = 'var(--accent)') {
 }
 
 // رسم خطي مع تعبئة (متوسط الدرجات لكل ترم)
-export function lineChart(data, { min = 50, max = 100, color = '#8b6cff' } = {}) {
+export function lineChart(data, { min = 50, max = 100, color = '#1e4fb3' } = {}) {
   if (!data.length) return '';
-  const W = 520, H = 250, L = 34, R = 14, T = 16, B = 30;
+  const W = 520, H = 330, L = 34, R = 14, T = 16, B = 30;
   const x = (i) => (data.length === 1 ? W / 2 : L + (i * (W - L - R)) / (data.length - 1));
   const y = (v) => T + (1 - (v - min) / (max - min)) * (H - T - B);
   const pts = data.map((d, i) => [x(i), y(d.value)]);
@@ -47,11 +47,11 @@ export function lineChart(data, { min = 50, max = 100, color = '#8b6cff' } = {})
 
 // أعمدة أفقية (الدرجات حسب المقرر) بلون يعكس مستوى الدرجة
 export function hBars(items, { max = 100, color } = {}) {
-  const row = 30, L = 150, W = 520, H = items.length * row + 6;
+  const row = 30, L = 190, W = 560, H = items.length * row + 6;
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="الدرجات حسب المقرر">
     ${items.map((it, i) => {
       const w = Math.max(2, ((W - L - 36) * it.value) / max), y = i * row + 4, c = color?.(it.value) ?? 'var(--accent)';
-      return `<text x="${L - 8}" y="${y + 11}" text-anchor="end" dominant-baseline="central">${esc(it.label.length > 22 ? it.label.slice(0, 21) + '…' : it.label)}</text>
+      return `<text x="${L - 8}" y="${y + 11}" text-anchor="end" dominant-baseline="central">${esc(it.label.length > 30 ? it.label.slice(0, 29) + '…' : it.label)}</text>
         <rect x="${L}" y="${y}" width="${W - L - 36}" height="20" rx="6" fill="var(--surface-2)"/>
         <rect x="${L}" y="${y}" width="${w}" height="20" rx="6" fill="${c}" opacity=".9"/>
         <text x="${L + w + 6}" y="${y + 11}" dominant-baseline="central" style="fill:var(--text);font-weight:700">${it.value}</text>`;
@@ -67,7 +67,7 @@ export function radar(axes, layers) {
   const rings = [0.25, 0.5, 0.75, 1].map((k) => `<polygon points="${axes.map((_, i) => pt(i, k).join(',')).join(' ')}" fill="none" stroke="var(--border)"/>`).join('');
   const spokes = axes.map((_, i) => `<line x1="${c}" y1="${c}" x2="${pt(i, 1)[0]}" y2="${pt(i, 1)[1]}" stroke="var(--border)"/>`).join('');
   const labels = axes.map((a, i) => { const [x, y] = pt(i, 1.28); return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" style="fill:var(--text);font-size:12px;font-weight:700">${esc(a)}</text>`; }).join('');
-  return `<svg class="chart" viewBox="0 0 ${S} ${S}" role="img" aria-label="رادار الإتقان وخطر التعثر">${rings}${spokes}
+  return `<svg class="chart radar" viewBox="0 0 ${S} ${S}" role="img" aria-label="رادار الإتقان وخطر التعثر">${rings}${spokes}
     ${layers.map((l) => `<polygon points="${poly(l.values)}" fill="${l.color}" fill-opacity=".22" stroke="${l.color}" stroke-width="2.5" stroke-linejoin="round"/>${l.values.map((v, i) => `<circle cx="${pt(i, v)[0]}" cy="${pt(i, v)[1]}" r="4" fill="${l.color}"/>`).join('')}`).join('')}
     ${labels}</svg>`;
 }

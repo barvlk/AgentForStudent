@@ -55,7 +55,7 @@ ${summary}
 </transcript>
 
 ## الأسلوب
-- لهجة سعودية بيضاء، ودّية ومحفّزة، مثل أخ أكبر فاهم.
+- لغة عربية فصحى مبسّطة، رسمية ومهذّبة ومحفّزة، بدون رموز تعبيرية.
 - مختصر ومباشر: نقاط واضحة بدون حشو. استخدم **الخط العريض** والقوائم النقطية.
 - أجب عن أي سؤال يكتبه الطالب (دراسي أو عام) ولا تقتصر على أسئلة محددة.
 
@@ -152,10 +152,10 @@ const has = (t, words) => words.some((w) => t.includes(normalizeArabic(w)));
 
 function tasksReply(studentId) {
   const items = svc.scheduledTasks(studentId);
-  if (!items.length) return '🎉 ما عندك مهام معلقة الحين. استغل الفرصة وراجع نقاط ضعفك!';
+  if (!items.length) return 'لا توجد لديك مهام معلقة حالياً. يمكنك الاستفادة من الوقت في مراجعة المجالات التي تحتاج إلى تقوية.';
   const urgent = items.filter((s) => s.overdue || (s.days_left != null && s.days_left <= 2));
   return [
-    urgent.length ? `⚠️ عندك **${urgent.length}** مهام عاجلة، ابدأ فيها أول.` : 'وضعك مرتب، وهذي مهامك حسب الأولوية:',
+    urgent.length ? `لديك **${urgent.length}** مهام عاجلة، يُنصح بالبدء بها أولاً.` : 'وضع مهامك منتظم، وفيما يلي مهامك مرتبة حسب الأولوية:',
     '',
     ...items.slice(0, 6).map((s, i) => `${i + 1}. **${s.task.title}** — ${s.task.course}\n   • ${s.due_label} · الأهمية: ${s.task.priority} · الأولوية ${s.score}/100${s.task.est_hours ? ` · ${s.task.est_hours} ساعة` : ''}`),
     '',
@@ -169,11 +169,11 @@ function analyticsReply(studentId) {
   const weakest = [...rows].sort((x, y) => x.e.probability - y.e.probability)[0];
   const strongest = [...rows].sort((x, y) => y.e.probability - x.e.probability)[0];
   return [
-    '🧠 **تحليل مستواك في كل مجال:**', '',
+    '**تحليل مستواك الأكاديمي في كل مجال:**', '',
     ...rows.map(({ d, e, r }) => `• **${DOMAIN_LABELS[d]}**: إتقان ${pct(e.probability)} (${e.label})${r != null ? ` · خطر التعثر ${pct(r)}` : ''}`),
     '',
-    `💪 أقوى مجال عندك: **${DOMAIN_LABELS[strongest.d]}**`,
-    `🎯 أحتاج تركز على: **${DOMAIN_LABELS[weakest.d]}** — جرّب تطلب مني "خطة مذاكرة" وأوزع لك الساعات.`,
+    `أقوى مجال لديك: **${DOMAIN_LABELS[strongest.d]}**.`,
+    `المجال الأولى بالتركيز: **${DOMAIN_LABELS[weakest.d]}**. يمكنك طلب "خطة مذاكرة" ليتم توزيع الساعات عليه.`,
   ].join('\n');
 }
 
@@ -182,10 +182,10 @@ function planReply(studentId, text) {
   const hours = m ? Math.min(Math.max(Number(m[1]), 1), 60) : 10;
   const plan = svc.weeklyPlan(studentId, hours);
   return [
-    `🗓️ **خطة مذاكرتك لهالأسبوع (${hours} ساعة):**`, '',
+    `**خطة المذاكرة الأسبوعية (${hours} ساعة):**`, '',
     ...plan.focus.filter((f) => f.hours > 0).map((f) => `• **${f.label}**: ${f.hours} ساعة — إتقان ${pct(f.mastery)}، خطر ${pct(f.risk)}`),
-    ...(plan.top_tasks.length ? ['', '📌 **أهم مهامك القادمة:**', ...plan.top_tasks.map((s) => `• ${s.task.title} — ${s.task.course} (${s.due_label})`)] : []),
-    '', '_تقدر تقول لي "خطة 15 ساعة" وأعدلها لك._',
+    ...(plan.top_tasks.length ? ['', '**أهم المهام القادمة:**', ...plan.top_tasks.map((s) => `• ${s.task.title} — ${s.task.course} (${s.due_label})`)] : []),
+    '', '_يمكنك تحديد عدد الساعات، مثال: "خطة 15 ساعة"._',
   ].join('\n');
 }
 
@@ -200,31 +200,30 @@ export function localReply(studentId, message, profile) {
 
   const expr = message.replace(/[xX×]/g, '*').replace(/÷/g, '/').match(/[\d.\s()+\-*/%]{3,}/g)?.sort((a, b) => b.length - a.length)[0]?.trim();
   if (expr && /\d/.test(expr) && /[+\-*/%]/.test(expr)) {
-    try { return done(`🧮 **${expr} = ${Math.round(safeCalculate(expr) * 1e6) / 1e6}**`, 'calculate'); } catch { /* ليست عملية صالحة، كمّل */ }
+    try { return done(`الناتج: **${expr} = ${Math.round(safeCalculate(expr) * 1e6) / 1e6}**`, 'calculate'); } catch { /* ليست عملية صالحة، كمّل */ }
   }
 
   if (has(t, ['معدل', 'gpa', 'تراكمي', 'ساعاتي', 'ساعات'])) {
-    return done(`📈 معدلك التراكمي **${profile.gpa.toFixed(2)} / 4.00**، وأنجزت **${profile.earned_hours}** ساعة في **${profile.courses_count}** مقرر${profile.failed_courses.length ? `، وعندك ${profile.failed_courses.length} مقرر راسب` : ' بدون أي رسوب 👏'}.`);
+    return done(`معدلك التراكمي **${profile.gpa.toFixed(2)} / 4.00**، وقد أنجزت **${profile.earned_hours}** ساعة دراسية في **${profile.courses_count}** مقرراً${profile.failed_courses.length ? `، ولديك ${profile.failed_courses.length} مقرر راسب` : '، دون أي مقرر راسب'}.`);
   }
   if (has(t, ['مرحبا', 'هلا', 'سلام', 'اهلا', 'صباح', 'مساء', 'hello', 'hi'])) {
-    return done(`هلا والله يا ${profile.first_name} 👋 كيف أقدر أساعدك اليوم؟\n\n• "وش مهامي؟"\n• "وين نقاط ضعفي؟"\n• "خطة مذاكرة 12 ساعة"\n• أو اسألني عن أي مفهوم دراسي (BST, Scrum, SJF...)`);
+    return done(`أهلاً بك يا ${profile.first_name}. كيف يمكنني مساعدتك؟\n\n• "ما هي مهامي؟"\n• "ما نقاط ضعفي؟"\n• "خطة مذاكرة 12 ساعة"\n• أو اسألني عن أي مفهوم دراسي (BST، Scrum، SJF ...)`);
   }
-  if (has(t, ['شكرا', 'يعطيك', 'thanks'])) return done('العفو! أنا هنا متى ما احتجتني 💙');
+  if (has(t, ['شكرا', 'يعطيك', 'thanks'])) return done('العفو، يسعدني خدمتك في أي وقت.');
   if (has(t, ['وش تقدر', 'ايش تقدر', 'مساعده', 'help', 'كيف تشتغل', 'من انت'])) {
-    return done('أنا **مساعدك الأكاديمي** 🎓 أقدر:\n\n• أرتب لك **مهامك** حسب الأولوية\n• أحلل **مستواك** وأتوقع خطر التعثر\n• أبني لك **خطة مذاكرة** أسبوعية\n• أشرح لك **مفاهيم** من المذكرات\n• أحسب لك **المعدل** والدرجات');
+    return done('أنا **المساعد الأكاديمي**، ويمكنني:\n\n• ترتيب **مهامك** حسب الأولوية\n• تحليل **مستواك** والتنبؤ بخطر التعثر\n• إعداد **خطة مذاكرة** أسبوعية\n• شرح **المفاهيم** الواردة في المذكرات\n• حساب **المعدل** والدرجات');
   }
 
   // كلام عام: ردود بسيطة بدل شرح مذكرة لا علاقة لها
-  if (has(t, ['تحبني', 'احبك', 'تحبك', 'حبيبي', 'حبيبتي'])) return done('😄 أحبك في الله! أنا مساعد أكاديمي، بس أحب أشوفك تتفوق. وش نذاكر اليوم؟');
-  if (has(t, ['كيفك', 'كيف حالك', 'شلونك', 'علومك', 'وش اخبارك', 'ايش اخبارك'])) return done('الحمد لله تمام 🙌 وأنت كيفك؟ جاهز أساعدك في مهامك أو مذاكرتك.');
-  if (has(t, ['اسمك', 'من سواك', 'من صنعك', 'مين انت', 'منو انت'])) return done('أنا **AgentForStudent**، مساعد أكاديمي لطلاب جامعة أم القرى 🎓');
-  if (has(t, ['نكته', 'نكتة', 'اضحكني'])) return done('ليش المبرمج ما يطلع من البيت؟ لأنه ما لقى **Exit**! 😂');
+  if (has(t, ['تحبني', 'احبك', 'تحبك', 'حبيبي', 'حبيبتي'])) return done('شكراً لك. أنا مساعد أكاديمي، ويسعدني دعمك في مسيرتك الدراسية. بماذا تود أن نبدأ؟');
+  if (has(t, ['كيفك', 'كيف حالك', 'شلونك', 'علومك', 'وش اخبارك', 'ايش اخبارك'])) return done('بخير والحمد لله، شكراً لسؤالك. كيف يمكنني مساعدتك في مهامك أو مذاكرتك؟');
+  if (has(t, ['اسمك', 'من سواك', 'من صنعك', 'مين انت', 'منو انت'])) return done('أنا **المساعد الأكاديمي** المخصص لطلاب جامعة أم القرى.');
 
   const notes = svc.knowledge.search(message, 3).filter((h) => h.score >= 0.15);
   if (notes.length) {
-    return done(['📚 لقيت لك هذي المعلومات من المذكرات:', '', ...notes.map((h) => `• **${h.category}**: ${h.text}`)].join('\n'), 'search_study_notes');
+    return done(['وجدت المعلومات التالية في المذكرات:', '', ...notes.map((h) => `• **${h.category}**: ${h.text}`)].join('\n'), 'search_study_notes');
   }
-  return done('ما فهمت قصدك 100% 🤔 بس أقدر أساعدك في:\n\n• **مهامك ومواعيدك**\n• **نقاط ضعفك وقوتك**\n• **خطة مذاكرة** لهالأسبوع\n• **شرح مفاهيم** (هياكل بيانات، نظم تشغيل، أمن...)\n• **حسابات** المعدل والدرجات\n\nجرّب تعيد صياغة سؤالك.');
+  return done('عذراً، لم أتمكن من فهم طلبك. يمكنني مساعدتك في:\n\n• **مهامك ومواعيدك**\n• **نقاط ضعفك وقوتك**\n• **خطة مذاكرة** أسبوعية\n• **شرح المفاهيم** (هياكل البيانات، نظم التشغيل، الأمن ...)\n• **حسابات** المعدل والدرجات\n\nيرجى إعادة صياغة سؤالك.');
 }
 
 // ---------------------------------------------------------------- الواجهة

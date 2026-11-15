@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { esc, $, $$, toast, PRIORITY_COLOR } from './ui.js';
 import { ring } from './charts.js';
+import { icon } from './icons.js';
 
 const scoreColor = (s) => (s >= 80 ? 'var(--bad)' : s >= 60 ? 'var(--warn)' : 'var(--good)');
 
@@ -12,13 +13,13 @@ export async function renderTasks(root, { onChange }) {
   root.innerHTML = `
   <div class="fade-in">
     <div class="grid stats" style="grid-template-columns:repeat(3,1fr)">
-      <div class="card stat" style="--c:var(--primary)"><div class="ico">📋</div><div><small>مهام معلقة</small><strong>${tasks.length}</strong></div></div>
-      <div class="card stat" style="--c:var(--bad)"><div class="ico">🔥</div><div><small>عاجلة</small><strong>${urgent}</strong></div></div>
-      <div class="card stat" style="--c:var(--accent)"><div class="ico">⏳</div><div><small>ساعات العمل المتوقعة</small><strong>${tasks.reduce((a, t) => a + (t.task.est_hours || 0), 0)}</strong></div></div>
+      <div class="card stat" style="--c:var(--primary)"><div class="ico">${icon('list')}</div><div><small>مهام معلقة</small><strong>${tasks.length}</strong></div></div>
+      <div class="card stat" style="--c:var(--bad)"><div class="ico">${icon('alert')}</div><div><small>مهام عاجلة</small><strong>${urgent}</strong></div></div>
+      <div class="card stat" style="--c:var(--accent)"><div class="ico">${icon('clock')}</div><div><small>ساعات العمل المتوقعة</small><strong>${tasks.reduce((a, t) => a + (t.task.est_hours || 0), 0)}</strong></div></div>
     </div>
 
     <details class="card" ${tasks.length ? '' : 'open'}>
-      <summary>➕ إضافة مهمة جديدة</summary>
+      <summary>إضافة مهمة جديدة</summary>
       <form class="task-form" id="task-form">
         <div class="field"><label>المادة</label><input class="input" name="course" maxlength="100" required placeholder="مثال: تعلم الآلة"></div>
         <div class="field"><label>المهمة</label><input class="input" name="title" maxlength="200" required placeholder="واجب، كويز، مشروع..."></div>
@@ -41,25 +42,25 @@ export async function renderTasks(root, { onChange }) {
           <h4>${esc(s.task.title)}</h4>
           <div class="muted" style="font-size:.88rem">${esc(s.task.course)}</div>
           <div class="meta">
-            <span class="chip ${s.overdue ? 'bad' : s.days_left != null && s.days_left <= 2 ? 'warn' : ''}">📅 ${esc(s.due_label)}</span>
+            <span class="chip ${s.overdue ? 'bad' : s.days_left != null && s.days_left <= 2 ? 'warn' : ''}">${icon('calendar')} ${esc(s.due_label)}</span>
             <span class="chip" style="color:${PRIORITY_COLOR[s.task.priority]}">● ${esc(s.task.priority)}</span>
-            ${s.task.est_hours ? `<span class="chip">⏱️ ${s.task.est_hours} ساعة</span>` : ''}
+            ${s.task.est_hours ? `<span class="chip">${icon('clock')} ${s.task.est_hours} ساعة</span>` : ''}
           </div>
         </div>
         ${ring(s.score / 100, { color: scoreColor(s.score), text: Math.round(s.score), size: 54 })}
         <div class="acts">
-          <button class="btn sm icon" data-act="done" title="تم الإنجاز" aria-label="تم الإنجاز">✅</button>
-          <button class="btn sm icon danger" data-act="del" title="حذف" aria-label="حذف">🗑️</button>
+          <button class="btn sm icon" data-act="done" title="تم الإنجاز" aria-label="تم الإنجاز">${icon('check')}</button>
+          <button class="btn sm icon danger" data-act="del" title="حذف" aria-label="حذف">${icon('trash')}</button>
         </div>
       </div>`).join('')}
-    </div>` : '<div class="empty card" style="margin-top:1rem"><span>🎉</span><h3>ما عندك مهام معلقة</h3><p>أضف مهمة جديدة أو ارتح شوي!</p></div>'}
+    </div>` : `<div class="empty card" style="margin-top:1rem"><span class="big">${icon('inbox')}</span><h3>لا توجد مهام معلقة</h3><p>يمكنك إضافة مهمة جديدة من النموذج أعلاه.</p></div>`}
   </div>`;
 
   void today;
   $('#task-form', root).addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target));
-    try { await api.addTask(f); toast('تمت إضافة المهمة ✅', 'good'); onChange(); }
+    try { await api.addTask(f); toast('تمت إضافة المهمة.', 'good'); onChange(); }
     catch (ex) { toast(ex.message, 'error'); }
   });
 
@@ -72,7 +73,7 @@ export async function renderTasks(root, { onChange }) {
         if (btn.dataset.act === 'del' && !confirm('حذف هذه المهمة؟')) return;
         await (btn.dataset.act === 'done' ? api.doneTask(id) : api.deleteTask(id));
         card.classList.add('leaving');
-        if (btn.dataset.act === 'done') toast('أحسنت! أنجزت مهمة 🎉', 'good');
+        if (btn.dataset.act === 'done') toast('تم تسجيل المهمة كمنجزة.', 'good');
         setTimeout(onChange, 250);
       } catch (ex) { toast(ex.message, 'error'); }
     });
