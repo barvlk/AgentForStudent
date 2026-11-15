@@ -2,6 +2,7 @@ services:
   - type: web
     name: agentforstudent
     runtime: node
+    plan: free
     rootDir: web
     buildCommand: echo "no build step"
     startCommand: node --disable-warning=ExperimentalWarning server/index.js
