@@ -116,7 +116,7 @@ npm test             # 46 اختباراً (SQLite + PostgreSQL)
 
 ```
 GEMINI_API_KEY=مفتاحك
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 DATABASE_URL=postgres://user:pass@host/db     # اختياري: لحفظ البيانات في PostgreSQL
 AFS_DEMO_STUDENT_ID=441126225
 AFS_DEMO_PASSWORD=كلمة_مرور_للعرض

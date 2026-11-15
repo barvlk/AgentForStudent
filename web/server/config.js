@@ -28,7 +28,7 @@ const num = (name, def) => {
 export const config = {
   port: num('PORT', 3000),
   geminiKey: process.env.GEMINI_API_KEY || null,
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
   temperature: num('GEMINI_TEMPERATURE', 0.3),
   // قاعدة البيانات: PostgreSQL إن وُجد DATABASE_URL (للنشر ويحفظ البيانات دائماً)، وإلا SQLite محلياً.
   // AFS_DB=pglite يشغّل PostgreSQL مدمجاً في الذاكرة (يُستخدم للاختبارات).

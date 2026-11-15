@@ -50,7 +50,8 @@ export function renderChat(root, { profile, ai }) {
     scroll();
     try {
       const r = await api.chat(text);
-      messages.push({ role: 'bot', text: r.reply, tag: r.tools?.length ? `الأدوات المستخدمة: ${r.tools.join('، ')}` : '' });
+      const engine = r.mode === 'gemini' ? 'المحرك: Gemini' : r.fallback ? 'المحرك: محلي احتياطي (تعذّر الاتصال بـ Gemini)' : 'المحرك: محلي';
+      messages.push({ role: 'bot', text: r.reply, tag: [engine, r.tools?.length ? `الأدوات: ${r.tools.join('، ')}` : ''].filter(Boolean).join(' · ') });
     } catch (e) {
       messages.push({ role: 'bot', text: `تعذّر إكمال الطلب: ${e.message}` });
     }

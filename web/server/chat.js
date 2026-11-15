@@ -120,7 +120,7 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
   const { impl, declarations } = buildTools(studentId);
   const contents = [...(histories.get(sessionId) ?? []), { role: 'user', parts: [{ text: message }] }];
   const used = [];
-  const candidates = [...new Set([workingModel, config.geminiModel, 'gemini-2.5-flash', 'gemini-2.0-flash'].filter(Boolean))];
+  const candidates = [...new Set([workingModel, config.geminiModel, 'gemini-3.6-flash', 'gemini-2.5-flash'].filter(Boolean))];
 
   for (const model of candidates) {
     try {
