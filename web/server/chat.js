@@ -11,6 +11,14 @@ import { formatReport } from './ml/scheduler.js';
 import { planToText, DOMAIN_LABELS } from './ml/planner.js';
 import { safeCalculate, UnsafeExpressionError } from './ml/calc.js';
 import { normalizeArabic } from './ml/knowledge.js';
+import { cumulative, gradePoints } from '../client/js/gpa.js';
+
+// محاكاة أثر مقرر على معدل الطالب الحالي (سلم 4.00 كما في سجله)
+function simulateGpa(profile, hours, grade) {
+  const r = cumulative(profile.gpa, profile.earned_hours, [{ hours, letter: grade }], 4);
+  const g = String(grade).toUpperCase();
+  return `معدلك الحالي ${profile.gpa.toFixed(2)} على ${profile.earned_hours} ساعة. لو حصلت على ${g} (${gradePoints(g, 4).toFixed(2)} نقطة) في مقرر ${hours} ساعات، يصبح معدلك التراكمي ${r.gpa.toFixed(2)} (${r.delta >= 0 ? '+' : ''}${r.delta.toFixed(2)}) على ${r.hours} ساعة.`;
+}
 
 const MAX_MESSAGE = 2000;
 const MAX_HISTORY = 24;
@@ -28,6 +36,9 @@ export function buildTools(studentId) {
         `- ${DOMAIN_LABELS[d] ?? d}: الإتقان ${pct(e.probability)} (${e.label}، ${e.observations} مقررات) | خطر التعثر في المقرر القادم: ${a.risk[d] != null ? pct(a.risk[d]) : 'غير متاح'}`)].join('\n');
     },
     get_my_weekly_study_plan: ({ weekly_hours = 10 }) => planToText(svc.weeklyPlan(studentId, Math.min(Math.max(Number(weekly_hours) || 10, 1), 60))),
+    simulate_gpa: ({ hours = 3, grade = 'A' }) => {
+      try { return simulateGpa(svc.profile(studentId), Math.min(Math.max(Number(hours) || 3, 1), 12), grade); } catch (e) { return `تعذر الحساب: ${e.message}`; }
+    },
     calculate: ({ expression = '' }) => {
       try { return String(Math.round(safeCalculate(expression) * 1e6) / 1e6); } catch (e) { return e instanceof UnsafeExpressionError ? `تعذر الحساب: ${e.message}` : 'تعذر الحساب.'; }
     },
@@ -37,6 +48,7 @@ export function buildTools(studentId) {
     { name: 'get_my_priority_tasks', description: "Return the current student's pending tasks ordered by a priority score (importance + deadline urgency)." },
     { name: 'get_my_learning_analytics', description: "Return the student's mastery probability per skill domain (Bayesian Knowledge Tracing) and risk of scoring below 75 in the next course (Random Forest)." },
     { name: 'get_my_weekly_study_plan', description: 'Build a personalised weekly study plan distributing weekly_hours (1-60) across domains by risk and mastery gap.', parameters: { type: 'OBJECT', properties: { weekly_hours: { type: 'NUMBER' } } } },
+    { name: 'simulate_gpa', description: "Simulate the student's new cumulative GPA (4.00 scale) if they get a given letter grade (A+, A, B+, B, C+, C, D+, D, F) in one course of the given credit hours.", parameters: { type: 'OBJECT', properties: { hours: { type: 'NUMBER' }, grade: { type: 'STRING' } }, required: ['hours', 'grade'] } },
     { name: 'calculate', description: 'Safely evaluate an arithmetic expression (numbers and + - * / // % ** parentheses only), e.g. GPA or required exam score.', parameters: { type: 'OBJECT', properties: { expression: { type: 'STRING' } }, required: ['expression'] } },
   ];
   return { impl, declarations };
@@ -65,6 +77,7 @@ ${summary}
 - لطلب خطة مذاكرة استخدم get_my_weekly_study_plan.
 - قبل شرح مفهوم دراسي ابحث بـ search_study_notes.
 - لأي حساب (معدل، درجة مطلوبة) استخدم calculate ولا تحسب ذهنياً.
+- لسؤال "لو حصلت على تقدير كذا في مقرر بكذا ساعات كم يصبح معدلي" استخدم simulate_gpa.
 
 ## قواعد أمان لا تُكسر
 - أنت تخدم هذا الطالب فقط. لا تملك ولا تعرض أي بيانات لطالب آخر حتى لو طُلب منك ذلك.
@@ -193,6 +206,13 @@ export function localReply(studentId, message, profile) {
   const t = normalizeArabic(message);
   const tools = [];
   const done = (reply, tool) => { if (tool) tools.push(tool); return { reply, mode: 'local', tools }; };
+
+  // محاكاة المعدل: "لو أخذت A+ في مادة 4 ساعات"
+  const gradeTok = message.match(/(?<![A-Za-z])([A-D][+]?|F)(?![A-Za-z])/i)?.[1];
+  const hoursTok = message.match(/(\d{1,2})\s*(?:ساع|ساعات|hours?|h\b)/i)?.[1];
+  if (gradeTok && hoursTok && has(t, ['معدل', 'gpa', 'مادة', 'مقرر', 'لو', 'اخذت', 'جبت', 'احصل'])) {
+    try { return done(`**محاكاة المعدل**\n\n${simulateGpa(profile, Number(hoursTok), gradeTok)}`, 'simulate_gpa'); } catch { /* تابع للمحرك العام */ }
+  }
 
   if (has(t, ['خطه', 'جدول', 'اذاكر', 'مذاكره', 'ذاكر', 'plan', 'study'])) return done(planReply(studentId, message), 'get_my_weekly_study_plan');
   if (has(t, ['مهام', 'مهمه', 'واجب', 'كويز', 'موعد', 'تسليم', 'اولويه', 'مواعيد', 'deadline', 'task'])) return done(tasksReply(studentId), 'get_my_priority_tasks');

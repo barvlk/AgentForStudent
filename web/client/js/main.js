@@ -6,20 +6,23 @@ import { renderLogin, renderChangePassword } from './login.js';
 import { renderDashboard } from './dashboard.js';
 import { renderTasks } from './tasks.js';
 import { renderChat, resetChat } from './chat.js';
+import { renderGpaCalc } from './gpacalc.js';
 
 const app = $('#app');
 const initialTab = location.hash.slice(1);
-const state = { me: null, tab: ['dashboard', 'tasks', 'chat'].includes(initialTab) ? initialTab : 'dashboard', flash: null, notified: false };
+const state = { me: null, tab: ['dashboard', 'tasks', 'gpa', 'chat'].includes(initialTab) ? initialTab : 'dashboard', flash: null, notified: false };
 
 setUnauthorizedHandler((msg) => { if (state.me) { state.me = null; resetChat(); state.flash = msg || 'انتهت الجلسة. الرجاء تسجيل الدخول مرة أخرى.'; boot(); } });
 
 const TABS = [
   ['dashboard', 'chart', 'لوحة الأداء'],
   ['tasks', 'calendar', 'المهام'],
+  ['gpa', 'calc', 'حاسبة المعدل'],
   ['chat', 'chat', 'المساعد'],
 ];
-const TITLES = { chat: 'المساعد الأكاديمي', dashboard: 'لوحة الأداء الأكاديمي', tasks: 'المهام والمواعيد' };
+const TITLES = { chat: 'المساعد الأكاديمي', dashboard: 'لوحة الأداء الأكاديمي', tasks: 'المهام والمواعيد', gpa: 'حاسبة المعدل' };
 const SUBTITLES = {
+  gpa: 'المعدل الفصلي والتراكمي بسلم 4.00 أو 5.00، مع محاكاة أثر كل تقدير',
   chat: 'اطرح سؤالك حول مهامك أو مستواك أو أي مفهوم دراسي',
   dashboard: 'تحليل الأداء الدراسي وتوقعات الفصل القادم',
   tasks: 'مرتبة حسب درجة الأولوية',
@@ -98,6 +101,7 @@ async function go(tab) {
   try {
     if (tab === 'chat') renderChat(view, { profile, ai: state.me.ai });
     else if (tab === 'dashboard') await renderDashboard(view);
+    else if (tab === 'gpa') renderGpaCalc(view, { profile });
     else await renderTasks(view, { onChange: async () => { await go('tasks'); updateBadge(); } });
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return;

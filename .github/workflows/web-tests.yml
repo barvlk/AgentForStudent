@@ -1,0 +1,26 @@
+name: web-tests
+
+on:
+  push:
+    paths: ["web/**", ".github/workflows/web-tests.yml"]
+  pull_request:
+    paths: ["web/**", ".github/workflows/web-tests.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax check (client and server)
+        run: |
+          for f in client/js/*.js server/*.js server/ml/*.js; do node --check "$f"; done
+      - name: Run tests
+        run: npm test
+        env:
+          GEMINI_API_KEY: ""

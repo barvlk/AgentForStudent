@@ -71,3 +71,14 @@ test('planner: hours follow need and sum close to budget', () => {
   assert.ok(plan.focus[0].hours > plan.focus[1].hours);
   assert.ok(Math.abs(plan.focus.reduce((a, f) => a + f.hours, 0) - 10) <= 1);
 });
+
+test('planner: strong domains still get a minimum review block, total stays', () => {
+  const mastery = {
+    AI: { probability: 0.99, observations: 3 }, Math: { probability: 0.2, observations: 3 },
+    Programming: { probability: 1, observations: 3 }, Systems: { probability: 0.99, observations: 3 },
+  };
+  const plan = buildWeeklyPlan(mastery, { AI: 0.01, Math: 0.6, Programming: 0.01, Systems: 0.02 }, [], 10);
+  assert.ok(plan.focus.every((f) => f.hours >= 0.5));
+  assert.ok(Math.abs(plan.focus.reduce((a, f) => a + f.hours, 0) - 10) <= 0.5);
+  assert.equal(plan.focus[0].domain, 'Math');
+});

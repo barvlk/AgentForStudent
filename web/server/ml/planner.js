@@ -27,6 +27,13 @@ export function buildWeeklyPlan(mastery, risk, scheduled, weeklyHours = 10) {
     const h = roundHalf((weeklyHours * d.need) / total);
     return { ...d, need: Math.round(d.need * 1000) / 1000, label: DOMAIN_LABELS[d.domain] ?? d.domain, hours: h >= MIN_BLOCK ? h : 0 };
   });
+  // حد أدنى للمراجعة: لا يُترك أي مجال بلا ساعات (حتى لا يتراجع المجال المتقن)، ويُخصم من أكبر حصة
+  const zero = focus.filter((f) => f.hours === 0);
+  if (zero.length && focus[0].hours - zero.length * MIN_BLOCK >= weeklyHours * 0.5) {
+    zero.forEach((f) => { f.hours = MIN_BLOCK; f.review = true; });
+    focus[0].hours -= zero.length * MIN_BLOCK;
+    trace.push(`Thought: أخصص ${MIN_BLOCK} ساعة مراجعة لكل مجال متقن حتى لا يتراجع مستواه.`);
+  }
   if (focus.length) trace.push(`Thought: المجال الأكثر احتياجاً هو ${focus[0].label}، أعطيه الحصة الأكبر.`);
   trace.push('Final: إرسال الخطة الأسبوعية والتوصيات للطالب.');
   return { weekly_hours: weeklyHours, focus, top_tasks: scheduled.slice(0, 3), trace };
