@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
-    "test": "node --disable-warning=ExperimentalWarning --test test/",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\"",
     "test:pg": "node --disable-warning=ExperimentalWarning --test test/api.pg.test.js",
     "db:status": "node --disable-warning=ExperimentalWarning server/cli.js status",
     "test:e2e": "playwright test"
