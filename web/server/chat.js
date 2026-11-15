@@ -112,7 +112,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class GeminiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
-async function generate(model, body, timeoutMs = 25000) {
+async function generate(model, body, timeoutMs = 12000) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': config.geminiKey },
@@ -131,13 +131,15 @@ async function generateWithRetry(model, body, deadline) {
   for (let attempt = 0; ; attempt++) {
     const left = deadline - Date.now();
     if (left < 2000) throw new GeminiError(0, 'deadline exceeded');
-    try { return await generate(model, body, Math.min(25000, left)); } catch (e) {
+    try { return await generate(model, body, Math.min(12000, left)); } catch (e) {
       if (!isTransient(e) || attempt >= 1) throw e;
       await sleep(Math.min(1500 * 2 ** attempt, Math.max(0, deadline - Date.now() - 2000)));
     }
   }
 }
 
+// قاطع الدائرة: إذا فشل Gemini لعطل في الاتصال، نتجاوزه دقيقة كاملة فيرد المحرك المحلي فوراً بدل أن ينتظر كل طالب مهلة كاملة
+let geminiDownUntil = 0;
 let workingModel = null;
 async function askGemini(sessionId, studentId, message, profile, transcript) {
   const { impl, declarations } = buildTools(studentId);
@@ -145,7 +147,7 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
   const used = [];
   const candidates = [...new Set([workingModel, config.geminiModel, 'gemini-3.6-flash', 'gemini-3.8-flash'].filter(Boolean))];
   let lastError = null;
-  const deadline = Date.now() + 40000; // مهلة كلية للطلب مهما تعددت المحاولات والنماذج
+  const deadline = Date.now() + 22000; // مهلة كلية للطلب مهما تعددت المحاولات والنماذج
 
   for (const model of candidates) {
     try {
@@ -294,10 +296,11 @@ export async function chat(sessionId, studentId, rawMessage) {
   const message = String(rawMessage ?? '').trim().slice(0, MAX_MESSAGE);
   if (!message) throw new svc.ValidationError('الرسالة فارغة.');
   const profile = await svc.profile(studentId);
-  if (!config.geminiKey) return localReply(studentId, message, profile);
+  if (!config.geminiKey || Date.now() < geminiDownUntil) return { ...(await localReply(studentId, message, profile)), ...(config.geminiKey ? { fallback: true } : {}) };
   try {
     return await askGemini(sessionId, studentId, message, profile, await svc.transcript(studentId));
   } catch (e) {
+    if (!(e instanceof GeminiError && (e.status === 400 || e.status === 404))) geminiDownUntil = Date.now() + 60000;
     console.warn(`[chat] Gemini unavailable (${e.status ?? e.name}); using local engine`);
     return { ...(await localReply(studentId, message, profile)), fallback: true };
   }
