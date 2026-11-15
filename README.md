@@ -1,147 +1,151 @@
-# AgentForStudent 🎓🤖
+# AgentForStudent
 
 [![tests](https://github.com/barvlk/AgentForStudent/actions/workflows/tests.yml/badge.svg)](https://github.com/barvlk/AgentForStudent/actions/workflows/tests.yml)
+[![web-tests](https://github.com/barvlk/AgentForStudent/actions/workflows/web-tests.yml/badge.svg)](https://github.com/barvlk/AgentForStudent/actions/workflows/web-tests.yml)
+![Node.js](https://img.shields.io/badge/backend-Node.js-3c873a)
+![JavaScript](https://img.shields.io/badge/frontend-HTML%20%7C%20CSS%20%7C%20JavaScript-1e4fb3)
 ![Python](https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue)
-![Streamlit](https://img.shields.io/badge/UI-Streamlit-ff4b4b)
 ![Gemini](https://img.shields.io/badge/LLM-Google%20Gemini-8e75b2)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-مساعد أكاديمي ذكي لطلاب جامعة أم القرى. يحلل السجل الأكاديمي للطالب، ويقدّر مستوى إتقانه لكل مجال، ويتنبأ بخطر التعثر، ويرتب مهامه، ويبني له خطة مذاكرة أسبوعية، ويحاوره عبر وكيل ذكي (Google Gemini) يستخدم أدوات حقيقية.
+مساعد أكاديمي ذكي لطلاب جامعة أم القرى. يحلل السجل الأكاديمي للطالب، ويقدّر مستوى إتقانه لكل مجال، ويتنبأ بخطر التعثر، ويرتب مهامه، ويبني له خطة مذاكرة أسبوعية، ويحسب معدله الفصلي والتراكمي، ويحاوره عبر مساعد ذكي يستخدم أدوات حقيقية.
 
-> An intelligent academic assistant: Bayesian Knowledge Tracing + Random-Forest risk prediction + a tool-using Gemini agent, behind an authenticated, encrypted Streamlit portal.
+> An academic assistant: Bayesian Knowledge Tracing + Random-Forest risk prediction + task scheduling + a GPA calculator (4.00 / 5.00 scales) + a tool-using Gemini agent. Node.js backend with a vanilla JavaScript frontend (no third-party dependencies), plus the original Python/Streamlit version.
 
-## 🌐 جرّب الموقع مباشرة
+## جرّب الموقع مباشرة
 
 **https://agentforstudent.onrender.com/**
 
-- الرقم الجامعي: `441126225` · كلمة المرور: `Demo2026x` (بيانات وهمية)
-- النسخة الجديدة: باك اند **Node.js** وفرونت اند **HTML/CSS/JavaScript** داخل مجلد [`web/`](web/)، والشرح الكامل للخوارزميات في [web/README.md](web/README.md)
+- الرقم الجامعي: `441126225` · كلمة المرور: `Demo2026x` (بيانات وهمية بالكامل)
 - الاستضافة المجانية تنام بعد فترة خمول، فأول فتح قد يتأخر نحو 30 ثانية
-- نسخة Streamlit/Python القديمة باقية في جذر المشروع
+- البيانات في النسخة المنشورة تتجدد عند كل إعادة تشغيل
 
 ## لقطات من النظام
 
 > اللقطات من بيانات تجريبية اصطناعية (أسماء ودرجات وهمية).
 
-| لوحة الأداء: الإتقان وخطر التعثر | ترتيب المهام حسب الأولوية |
+| تسجيل الدخول | لوحة الأداء: الإتقان وخطر التعثر |
 |---|---|
-| ![لوحة الأداء](docs/screenshots/dashboard.png) | ![المهام](docs/screenshots/tasks.png) |
-| **المساعد الذكي** | **تسجيل الدخول** |
-| ![المساعد الذكي](docs/screenshots/chat.png) | ![تسجيل الدخول](docs/screenshots/login.png) |
+| ![تسجيل الدخول](docs/screenshots/login.png) | ![لوحة الأداء](docs/screenshots/dashboard.png) |
+| **ترتيب المهام حسب الأولوية** | **حاسبة المعدل (سلم 4.00 و5.00)** |
+| ![المهام](docs/screenshots/tasks.png) | ![حاسبة المعدل](docs/screenshots/gpa.png) |
+
+**المساعد الأكاديمي**
+
+![المساعد الأكاديمي](docs/screenshots/chat.png)
 
 ## المزايا
 
 | المجال | الميزة |
 |---|---|
-| 🧠 التحليلات | تتبع الإتقان بـ **BKT**، والتنبؤ بالتعثر بـ **Random Forest** مع تقييم حقيقي (ROC-AUC ≈ 0.78) |
-| 🤖 الوكيل | **Gemini Function Calling** بخمس أدوات: البحث في المذكرات، المهام، التحليلات، خطة المذاكرة، الحاسبة الآمنة |
-| 📅 المهام | إضافة وإنهاء وحذف المهام، وترتيبها حسب الأهمية وقرب الموعد مع **SJF** عند التساوي |
-| 🔒 الأمان | تشفير البيانات بـ **Fernet (AES + HMAC)**، كلمات مرور **bcrypt**، قفل الحساب، انتهاء الجلسة، سجل تدقيق |
-| 🛡️ الحماية | منع XSS و SQL Injection و Prompt Injection، وأدوات مربوطة بالطالب المسجّل فقط |
-| ✅ الجودة | 55 اختبار آلي (pytest) تعمل تلقائياً على GitHub Actions، هيكل طبقات واضح، سجلات UTF-8 مع إخفاء البيانات الحساسة |
+| التحليلات | تتبع الإتقان بـ **BKT**، والتنبؤ بالتعثر بـ **Random Forest** مع تقييم على بيانات لم يتدرب عليها النموذج |
+| حاسبة المعدل | معدل الفصل والتراكمي، وسلم **4.00** أو **5.00**، وجدول **"ماذا لو"** لكل تقدير، وحساب المعدل المطلوب لبلوغ هدف |
+| المساعد | **Gemini Function Calling** بست أدوات (المذكرات، المهام، التحليلات، الخطة، محاكاة المعدل، الحاسبة الآمنة) مع **محرك محلي احتياطي** يرد حتى بدون Gemini |
+| المهام | إضافة وإنجاز وحذف، وترتيب حسب الأهمية وقرب الموعد مع **SJF** عند التساوي |
+| خطة المذاكرة | توزيع ساعات الأسبوع حسب خطر التعثر وفجوة الإتقان (نمط ReAct) مع حد أدنى للمراجعة في كل مجال |
+| الأمان | كلمات مرور **scrypt**، قفل الحساب، جلسات HttpOnly بانتهاء خمول، سجل تدقيق، Content-Security-Policy، منع XSS وSQL Injection وIDOR |
+| الجودة | **24 اختباراً** للموقع (Node) و**55** لنسخة بايثون، وكلاهما على GitHub Actions |
 
-## المعمارية
+## حاسبة المعدل
+
+المعدل = مجموع (نقاط التقدير × ساعات المقرر) ÷ مجموع الساعات.
+
+مثال: معدلك 3.37 على 71 ساعة، وأخذت **A+** في مقرر **4 ساعات** (سلم 4.00):
+
+```
+(3.37 × 71 + 4.00 × 4) ÷ 75 = 3.40
+```
+
+| سلم 4.00 (جدول أم القرى) | A+ | A | B+ | B | C+ | C | D+ | D | F |
+|---|---|---|---|---|---|---|---|---|---|
+| النقاط | 4.00 | 3.75 | 3.50 | 3.00 | 2.50 | 2.00 | 1.50 | 1.00 | 0 |
+
+| سلم 5.00 (الشائع في الجامعات السعودية) | A+ | A | B+ | B | C+ | C | D+ | D | F |
+|---|---|---|---|---|---|---|---|---|---|
+| النقاط | 5.00 | 4.75 | 4.50 | 4.00 | 3.50 | 3.00 | 2.50 | 2.00 | 1.00 |
+
+حدود النسب والنقاط قد تختلف قليلاً بين الجامعات؛ ارجع للائحة جامعتك للاعتماد الرسمي.
+
+## المعمارية (النسخة الجديدة: `web/`)
 
 ```mermaid
 flowchart LR
-    UI["واجهة الويب<br/>Streamlit"] --> SVC
-    CLI["لوحة المسؤول<br/>CLI"] --> SVC
-    SVC["AppServices"] --> AUTH["المصادقة<br/>bcrypt + قفل"]
-    SVC --> REC["السجلات الأكاديمية<br/>Excel مشفّر"]
-    SVC --> DB[("SQLite<br/>حسابات · مهام · تدقيق")]
-    SVC --> AN["التحليلات<br/>BKT + Random Forest"]
-    SVC --> PLAN["الجدولة + خطة المذاكرة"]
-    UI --> LLM["Gemini Agent"]
-    LLM -- "Function Calling" --> TOOLS["أدوات مربوطة<br/>بالطالب الحالي"]
-    TOOLS --> SVC
+    FE["الواجهة الأمامية<br/>HTML + CSS + JavaScript"] -- "REST API" --> API["خادم Node.js"]
+    API --> AUTH["المصادقة<br/>scrypt + قفل + جلسات"]
+    API --> DB[("SQLite<br/>سجلات · مهام · تدقيق")]
+    API --> ML["الخوارزميات<br/>BKT · Random Forest · الجدولة · ReAct"]
+    API --> GPA["حاسبة المعدل"]
+    API --> CHAT["المساعد"]
+    CHAT -- "Gemini" --> TOOLS["أدوات مربوطة<br/>بالطالب الحالي"]
+    CHAT -. "احتياطي" .-> LOCAL["المحرك المحلي"]
+    TOOLS --> ML
+    TOOLS --> GPA
+    LOCAL --> ML
 ```
 
 ## هيكل المشروع
 
 ```
-├── app.py                     # تشغيل واجهة الويب
-├── main.py                    # تشغيل لوحة تحكم المسؤول
-├── agentforstudent/
-│   ├── config.py              # الإعدادات من .env
-│   ├── logging_setup.py       # السجلات + إخفاء البيانات الحساسة
-│   ├── security/              # crypto.py · auth.py · masking.py
-│   ├── data/                  # academic_records.py · tasks_repository.py · database.py
-│   ├── analytics/             # bkt.py · risk_model.py
-│   ├── agent/                 # llm.py · tools.py · knowledge_base.py · scheduler.py · study_planner.py · safe_calc.py · services.py
-│   ├── ui/                    # app.py · styles.py
-│   └── cli.py
-├── tests/                     # اختبارات pytest
-├── docs/IMPROVEMENTS.md       # شرح كل التحسينات وأسبابها
-└── data/                      # البيانات المشفّرة وقاعدة البيانات (غير مرفوعة على git)
+├── web/                       # النسخة الجديدة: Node.js + HTML/CSS/JS (بدون مكتبات خارجية)
+│   ├── server/                # index.js · auth.js · db.js · services.js · chat.js · sample.js
+│   │   └── ml/                # bkt · forest · risk · scheduler · planner · knowledge · calc
+│   ├── client/                # index.html · styles.css · js/ (main, dashboard, tasks, gpacalc, chat, charts ...)
+│   └── test/                  # اختبارات node:test
+├── render.yaml                # إعداد النشر على Render (الخطة المجانية)
+├── agentforstudent/           # النسخة الأولى: Python + Streamlit
+├── tests/                     # اختبارات pytest للنسخة الأولى
+└── docs/                      # الصور والشروحات
 ```
 
-## التشغيل السريع (ببيانات تجريبية)
+شرح كل خوارزمية ووظيفتها في [web/README.md](web/README.md).
+
+## التشغيل السريع
+
+### النسخة الجديدة (Node.js 22.5 أو أحدث)
 
 ```bash
 git clone https://github.com/barvlk/AgentForStudent.git
-cd AgentForStudent
+cd AgentForStudent/web
+npm start            # http://localhost:3000
+npm test             # 24 اختباراً
+```
+
+عند أول تشغيل يولّد النظام 100 طالب وهمي، ويدرّب نموذج التنبؤ، وينشئ حساب العرض. للمحادثة عبر Gemini أنشئ ملف `.env` في جذر المشروع:
+
+```
+GEMINI_API_KEY=مفتاحك
+GEMINI_MODEL=gemini-2.5-flash
+AFS_DEMO_STUDENT_ID=441126225
+AFS_DEMO_PASSWORD=كلمة_مرور_للعرض
+```
+
+بدون `GEMINI_API_KEY` تعمل كل المزايا، والمحادثة تستخدم المحرك المحلي.
+
+### النشر على Render
+
+افتح Render ← **New** ← **Blueprint** ← اختر المستودع. ملف [render.yaml](render.yaml) يضبط الخدمة على الخطة المجانية. أضف `GEMINI_API_KEY` من **Environment** إن رغبت.
+
+### النسخة الأولى (Python + Streamlit)
+
+```bash
 python -m venv .venv
 .venv\Scripts\activate           # ويندوز  (لينكس/ماك: source .venv/bin/activate)
 pip install -r requirements-dev.txt
 
 python main.py setup --demo      # يولّد 100 طالب وهمي، مفتاح تشفير، ويشفّر البيانات وينشئ الحسابات
 python main.py web               # أو: streamlit run app.py
+python -m pytest -q              # 55 اختباراً
 ```
 
-افتح `data/initial_credentials.csv` وخذ أي رقم جامعي مع كلمة مروره المؤقتة.
-للمحادثة الذكية أضف `GEMINI_API_KEY` في ملف `.env`. أما باقي المزايا فتعمل بدونه.
+افتح `data/initial_credentials.csv` وخذ أي رقم جامعي مع كلمة مروره المؤقتة. أوامر لوحة التحكم الأخرى (`student`, `train`, `users`, `backup`, `audit` ...) متوفرة عبر `python main.py`.
 
-## التشغيل ببيانات حقيقية
+لتشغيلها ببيانات الجامعة الحقيقية ضع ملف الطلاب في `data/raw/students_by_term_150.xlsx` ثم `python main.py setup`. أعمدة الملف: `الرقم الجامعي، اسم الطالب، المستوى الدراسي الحالي، ترم المادة، رمز المقرر، اسم المقرر، الساعات، الدرجة، التقدير، النقاط`. **احذف `data/initial_credentials.csv` بعد توزيع كلمات المرور، ولا ترفع بيانات طلاب حقيقية على نسخة عامة.**
 
-```bash
-# ضع ملف الطلاب في data/raw/students_by_term_150.xlsx (وملف المهام اختيارياً في data/raw/tasks.xlsx)
-python main.py setup
-# أو حدد المسارات:  python main.py setup --students path/to/students.xlsx --tasks path/to/tasks.xlsx
-```
+## ملاحظات علمية
 
-أعمدة ملف الطلاب المطلوبة: `الرقم الجامعي، اسم الطالب، المستوى الدراسي الحالي، ترم المادة، رمز المقرر، اسم المقرر، الساعات، الدرجة، التقدير، النقاط`.
-
-ينشئ أمر `setup` الملف `data/initial_credentials.csv` وفيه كلمات مرور مؤقتة للطلاب، ويُطلب من كل طالب تغيير كلمة مروره عند أول دخول. **احذف هذا الملف بعد توزيع كلمات المرور.**
-
-## النشر على Streamlit Community Cloud
-
-1. ادخل [share.streamlit.io](https://share.streamlit.io) بحساب GitHub.
-2. **Create app** ← اختر المستودع `barvlk/AgentForStudent`، الفرع `main`، والملف `app.py`.
-3. من **Advanced settings** اختر Python 3.12، والصق في **Secrets**:
-
-```toml
-GEMINI_API_KEY = "مفتاحك"
-DATA_ENCRYPTION_KEY = "ناتج: python main.py keygen"
-AFS_PUBLIC_DEMO = "true"
-AFS_DEMO_STUDENT_ID = "446006609"
-AFS_DEMO_PASSWORD = "1234567"
-AFS_DEMO_NAME = "عبدالمجيد"
-```
-
-في وضع العرض العام يولّد النظام بيانات وهمية مشفّرة عند أول تشغيل، ويعرض بيانات الحساب التجريبي في صفحة الدخول.
-**لا ترفع بيانات طلاب حقيقية على النسخة العامة.**
-
-## أوامر لوحة التحكم
-
-| الأمر | الوظيفة |
-|---|---|
-| `python main.py` | القائمة التفاعلية |
-| `python main.py setup --demo` | تهيئة كاملة على بيانات تجريبية |
-| `python main.py student 441126225 --export report.txt` | ملخص وتحليل طالب |
-| `python main.py train` | تقييم نموذج التنبؤ وأهمية الخصائص |
-| `python main.py users set-password <id> [--temporary]` | ضبط كلمة مرور طالب |
-| `python main.py users unlock <id>` | فك قفل حساب |
-| `python main.py import-tasks file.xlsx` | استيراد مهام |
-| `python main.py backup` | نسخة احتياطية مضغوطة ومشفّرة |
-| `python main.py audit` · `logs` · `diag` | سجل التدقيق، سجلات النظام، التشخيص |
-| `python main.py encrypt` / `decrypt` / `keygen` | إدارة التشفير |
-| `python main.py chat <id>` | محادثة تجريبية مع الوكيل من الطرفية |
-
-## الاختبارات
-
-```bash
-python -m pytest -q
-```
+- البيانات في هذا المستودع **اصطناعية**. أرقام التقييم (مثل ROC-AUC) نتائج على بيانات مولّدة بنمط واضح، ولا تدل على دقة النموذج على طلاب حقيقيين.
+- معاملات BKT موضوعة يدوياً ولم تُقدَّر من بيانات حقيقية.
+- المحرك المحلي للمحادثة يعتمد كلمات مفتاحية، ولفهم أي سؤال يلزم Gemini.
 
 ## المؤلف
 
