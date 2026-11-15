@@ -18,7 +18,7 @@
 
 - الرقم الجامعي: `441126225` · كلمة المرور: `Demo2026x` (بيانات وهمية بالكامل)
 - الاستضافة المجانية تنام بعد فترة خمول، فأول فتح قد يتأخر نحو 30 ثانية
-- البيانات في النسخة المنشورة تتجدد عند كل إعادة تشغيل
+- بدون ربط قاعدة PostgreSQL تتجدد البيانات عند كل إعادة تشغيل (الاستضافة المجانية تمسح الملفات). مع `DATABASE_URL` تبقى محفوظة، انظر [web/README.md](web/README.md#ربط-قاعدة-postgresql-لتبقى-البيانات-بعد-إعادة-تشغيل-الموقع)
 
 ## لقطات من النظام
 
@@ -43,8 +43,9 @@
 | المساعد | **Gemini Function Calling** بست أدوات (المذكرات، المهام، التحليلات، الخطة، محاكاة المعدل، الحاسبة الآمنة) مع **محرك محلي احتياطي** يرد حتى بدون Gemini |
 | المهام | إضافة وإنجاز وحذف، وترتيب حسب الأهمية وقرب الموعد مع **SJF** عند التساوي |
 | خطة المذاكرة | توزيع ساعات الأسبوع حسب خطر التعثر وفجوة الإتقان (نمط ReAct) مع حد أدنى للمراجعة في كل مجال |
+| قاعدة البيانات | **SQL** مطبّعة (طلاب، مقررات، تسجيلات، مهام، حسابات) بمفاتيح أجنبية وقيود CHECK وعروض (Views) ومهاجرات؛ **SQLite** محلياً و**PostgreSQL** للحفظ الدائم عبر `DATABASE_URL` |
 | الأمان | كلمات مرور **scrypt**، قفل الحساب، جلسات HttpOnly بانتهاء خمول، سجل تدقيق، Content-Security-Policy، منع XSS وSQL Injection وIDOR |
-| الجودة | **24 اختباراً** للموقع (Node) و**55** لنسخة بايثون، وكلاهما على GitHub Actions |
+| الجودة | **46 اختباراً** للموقع (Node) تعمل على SQLite وPostgreSQL، و**55** لنسخة بايثون، وكلاهما على GitHub Actions |
 
 ## حاسبة المعدل
 
@@ -72,7 +73,7 @@
 flowchart LR
     FE["الواجهة الأمامية<br/>HTML + CSS + JavaScript"] -- "REST API" --> API["خادم Node.js"]
     API --> AUTH["المصادقة<br/>scrypt + قفل + جلسات"]
-    API --> DB[("SQLite<br/>سجلات · مهام · تدقيق")]
+    API --> DB[("قاعدة SQL<br/>SQLite أو PostgreSQL<br/>طلاب · مقررات · تسجيلات · مهام")]
     API --> ML["الخوارزميات<br/>BKT · Random Forest · الجدولة · ReAct"]
     API --> GPA["حاسبة المعدل"]
     API --> CHAT["المساعد"]
@@ -106,24 +107,29 @@ flowchart LR
 ```bash
 git clone https://github.com/barvlk/AgentForStudent.git
 cd AgentForStudent/web
+npm install
 npm start            # http://localhost:3000
-npm test             # 24 اختباراً
+npm test             # 46 اختباراً (SQLite + PostgreSQL)
 ```
 
-عند أول تشغيل يولّد النظام 100 طالب وهمي، ويدرّب نموذج التنبؤ، وينشئ حساب العرض. للمحادثة عبر Gemini أنشئ ملف `.env` في جذر المشروع:
+عند أول تشغيل ينشئ النظام جداول القاعدة، ويولّد 100 طالب وهمي، ويدرّب نموذج التنبؤ، وينشئ حساب العرض. محلياً تُحفظ البيانات في `web/data/afs.db` (SQLite). للمحادثة عبر Gemini ولربط PostgreSQL أنشئ ملف `.env` في جذر المشروع:
 
 ```
 GEMINI_API_KEY=مفتاحك
 GEMINI_MODEL=gemini-2.5-flash
+DATABASE_URL=postgres://user:pass@host/db     # اختياري: لحفظ البيانات في PostgreSQL
 AFS_DEMO_STUDENT_ID=441126225
 AFS_DEMO_PASSWORD=كلمة_مرور_للعرض
 ```
 
-بدون `GEMINI_API_KEY` تعمل كل المزايا، والمحادثة تستخدم المحرك المحلي.
+بدون `GEMINI_API_KEY` تعمل كل المزايا، والمحادثة تستخدم المحرك المحلي. وبدون `DATABASE_URL` تُستخدم SQLite.
 
 ### النشر على Render
 
-افتح Render ← **New** ← **Blueprint** ← اختر المستودع. ملف [render.yaml](render.yaml) يضبط الخدمة على الخطة المجانية. أضف `GEMINI_API_KEY` من **Environment** إن رغبت.
+افتح Render ← **New** ← **Blueprint** ← اختر المستودع. ملف [render.yaml](render.yaml) يضبط الخدمة على الخطة المجانية. أضف من **Environment**:
+
+- `DATABASE_URL`: رابط قاعدة PostgreSQL (من Neon أو Supabase أو Render) لتبقى البيانات بعد إعادة التشغيل.
+- `GEMINI_API_KEY`: اختياري.
 
 ### النسخة الأولى (Python + Streamlit)
 

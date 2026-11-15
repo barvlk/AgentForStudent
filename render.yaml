@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: web
-    buildCommand: echo "no build step"
+    buildCommand: npm install --omit=dev
     startCommand: node --disable-warning=ExperimentalWarning server/index.js
     envVars:
       - key: NODE_VERSION
@@ -16,4 +16,7 @@ services:
       - key: AFS_DEMO_PASSWORD
         value: "Demo2026x"
       - key: GEMINI_API_KEY
+        sync: false
+      # رابط قاعدة PostgreSQL (من Neon أو Supabase أو Render). بدونه تعمل القاعدة مؤقتة وتُمسح مع كل إعادة تشغيل.
+      - key: DATABASE_URL
         sync: false

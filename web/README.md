@@ -1,18 +1,77 @@
 # AgentForStudent — النسخة الجديدة (Node.js + HTML/CSS/JS)
 
-باك اند **Node.js** وفرونت اند **JavaScript** بدون أي مكتبة خارجية (zero dependencies).
+باك اند **Node.js** وفرونت اند **JavaScript** (بدون أي مكتبة في المتصفح)، وقاعدة بيانات **SQL**: SQLite محلياً، أو **PostgreSQL** عند ضبط `DATABASE_URL`.
+المكتبة الوحيدة في الباك اند هي `pg`، ولا تُستخدم إلا مع PostgreSQL.
 نسخة Streamlit/Python القديمة باقية كما هي في جذر المشروع.
 
 ## التشغيل
 
 ```bash
 cd web
+npm install        # يثبّت pg (ومكتبة الاختبار PGlite)
 npm start          # http://localhost:3000   (يتطلب Node 22.5+)
-npm test           # 24 اختبار
+npm test           # 46 اختباراً (SQLite + PostgreSQL + الخوارزميات + الحاسبة)
+npm run db:status  # نوع القاعدة وعدد صفوف كل جدول
 ```
 
-الإعدادات من `.env` في جذر المشروع (`GEMINI_API_KEY`, `GEMINI_MODEL`, `AFS_DEMO_STUDENT_ID`, `AFS_DEMO_PASSWORD`...).
-أول تشغيل يولّد بيانات وهمية (100 طالب) ويدرّب نموذج التنبؤ تلقائياً.
+الإعدادات من `.env` في جذر المشروع (`GEMINI_API_KEY`, `GEMINI_MODEL`, `DATABASE_URL`, `AFS_DEMO_STUDENT_ID`, `AFS_DEMO_PASSWORD`...).
+أول تشغيل ينشئ الجداول ويولّد بيانات وهمية (100 طالب) ويدرّب نموذج التنبؤ تلقائياً، وبعدها تبقى البيانات محفوظة.
+
+## قاعدة البيانات (SQL)
+
+كل البيانات في قاعدة SQL: الطلاب والمقررات والدرجات والمهام والحسابات والجلسات وسجل التدقيق.
+الجداول مطبّعة بمفاتيح أجنبية وقيود تحقق (CHECK)، والمخطط في [db/migrations/](db/migrations/) ويُطبَّق تلقائياً عند الإقلاع.
+
+```mermaid
+erDiagram
+    students ||--o{ enrollments : "يسجَّل في"
+    courses  ||--o{ enrollments : "يُدرَّس في"
+    students ||--o| users : "له حساب"
+    users    ||--o{ sessions : "جلسات"
+    students ||--o{ tasks : "مهام"
+    students { int student_id PK  text name  text level }
+    courses { text course_code PK  text course_name  real credits  text domain }
+    enrollments { int student_id FK  text course_code FK  int term_no  real score  text letter  real points }
+    users { int student_id PK  text password_hash  int must_change  int failed_attempts  bigint locked_until }
+    sessions { text token_hash PK  int student_id FK  bigint last_seen }
+    tasks { int id PK  int student_id FK  text course  text title  text priority  text due_date  real est_hours  int done }
+    audit { int id PK  bigint ts  text event  text student_id  text detail }
+```
+
+| العنصر | الوصف |
+|---|---|
+| `students` · `courses` · `enrollments` | الطالب والمقرر وتسجيل الطالب في مقرر بدرجته (مفتاح مركب: طالب + مقرر + ترم) |
+| `users` · `sessions` | كلمات المرور (scrypt) والجلسات (تُخزَّن مجزّأة SHA-256 فقط) |
+| `tasks` | مهام الطالب، تُحذف تلقائياً مع حذف الطالب (`ON DELETE CASCADE`) |
+| `audit` | سجل التدقيق (الأرقام الجامعية مُقنَّعة) |
+| العرض `v_records` | السجل الأكاديمي مسطّحاً (JOIN) ويغذّي نموذج التنبؤ |
+| العرض `v_student_summary` | **المعدل التراكمي والساعات المجتازة محسوبان داخل SQL** |
+| `schema_migrations` | سجل ملفات المخطط المطبّقة (نظام مهاجرات بسيط) |
+
+مثال: المعدل التراكمي كما يحسبه العرض:
+
+```sql
+SELECT student_id, name, courses_count, ROUND(CAST(gpa AS NUMERIC), 2) AS gpa, earned_hours
+FROM v_student_summary ORDER BY gpa DESC LIMIT 5;
+```
+
+يمكنك الاطلاع على البيانات من الطرفية: `node server/cli.js sql "SELECT * FROM v_student_summary LIMIT 5"` (استعلامات SELECT فقط).
+
+### ربط قاعدة PostgreSQL (لتبقى البيانات بعد إعادة تشغيل الموقع)
+
+الاستضافة المجانية تمسح الملفات عند كل إعادة تشغيل، لذلك SQLite هناك مؤقتة. للحفظ الدائم:
+
+1. أنشئ قاعدة PostgreSQL مجانية من [Neon](https://neon.tech) أو [Supabase](https://supabase.com) أو Render، وانسخ رابط الاتصال (`postgres://user:pass@host/db`).
+2. في Render: الخدمة ← **Environment** ← أضف `DATABASE_URL` بقيمة الرابط ← **Save**.
+3. عند التشغيل التالي ينشئ الخادم الجداول ويحمّل البيانات مرة واحدة فقط، وبعدها تبقى كل التغييرات (مهام، حسابات، جلسات).
+
+لا ترفع رابط الاتصال على GitHub؛ ضعه في متغيرات البيئة فقط. يُرجى العلم أن بعض الخطط المجانية للقواعد قد تنتهي أو تتوقف بعد فترة، فراجع شروط المزوّد.
+
+### كيف تأكدنا أنها تعمل
+
+- نفس مجموعة الاختبارات (16 اختباراً) تعمل على **SQLite** وعلى **PostgreSQL (PGlite)**، وعلى **خادم PostgreSQL حقيقي** عبر مشغّل `pg` (`npm run test:pg` مع `TEST_DATABASE_URL`، ويشتغل تلقائياً في GitHub Actions).
+- تتضمن الاختبارات: القيود (درجة خارج النطاق، أهمية غير صالحة، طالب غير موجود)، الحذف المتتابع، تراجع المعاملات (rollback)، تطابق المعدل المحسوب في SQL مع حسابه في JavaScript، وعدم تسرّب أخطاء SQL للمستخدم.
+- فحص الاستمرارية على Postgres حقيقي: أُضيفت مهمة ثم أُعيد تشغيل الخادم فبقيت المهمة، ولم تتكرر البيانات الأولية.
 
 ## الهيكل
 
@@ -21,7 +80,8 @@ web/
 ├── server/                 # الباك اند
 │   ├── index.js            # خادم HTTP + المسارات (REST API) + رؤوس الأمان + تحديد المعدل
 │   ├── config.js           # قراءة .env والإعدادات
-│   ├── db.js               # SQLite (node:sqlite) + سجل التدقيق
+│   ├── db.js               # طبقة SQL: SQLite / PostgreSQL / PGlite + المهاجرات + سجل التدقيق
+│   ├── cli.js              # أدوات القاعدة: status · sql
 │   ├── auth.js             # scrypt + قفل الحساب + الجلسات
 │   ├── services.js         # طبقة الخدمات (تجمع البيانات والتحليلات)
 │   ├── chat.js             # وكيل Gemini + المحرك المحلي الاحتياطي
@@ -35,6 +95,7 @@ web/
 │       ├── knowledge.js    # TF-IDF + Cosine Similarity
 │       ├── calc.js         # حاسبة آمنة (Recursive Descent)
 │       └── rng.js          # أرقام عشوائية قابلة للتكرار
+├── db/migrations/          # مخطط SQL: 001_init.sqlite.sql · 001_init.pg.sql
 ├── client/                 # الفرونت اند
 │   ├── index.html, styles.css
 │   └── js/ main · api · ui · charts · login · dashboard · tasks · chat

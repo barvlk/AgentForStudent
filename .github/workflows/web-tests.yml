@@ -12,15 +12,36 @@ jobs:
     defaults:
       run:
         working-directory: web
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pw
+          POSTGRES_DB: afs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
       - name: Syntax check (client and server)
         run: |
           for f in client/js/*.js server/*.js server/ml/*.js; do node --check "$f"; done
-      - name: Run tests
+      - name: Tests (SQLite + PostgreSQL via PGlite + unit tests)
         run: npm test
         env:
           GEMINI_API_KEY: ""
+      - name: Tests on a real PostgreSQL server (pg driver)
+        run: npm run test:pg
+        env:
+          GEMINI_API_KEY: ""
+          TEST_DATABASE_URL: postgres://postgres:pw@localhost:5432/afs

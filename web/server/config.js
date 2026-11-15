@@ -30,7 +30,12 @@ export const config = {
   geminiKey: process.env.GEMINI_API_KEY || null,
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   temperature: num('GEMINI_TEMPERATURE', 0.3),
-  dbFile: process.env.AFS_WEB_DB || path.join(WEB_ROOT, 'data', 'app.db'),
+  // قاعدة البيانات: PostgreSQL إن وُجد DATABASE_URL (للنشر ويحفظ البيانات دائماً)، وإلا SQLite محلياً.
+  // AFS_DB=pglite يشغّل PostgreSQL مدمجاً في الذاكرة (يُستخدم للاختبارات).
+  databaseUrl: process.env.DATABASE_URL || null,
+  dbDriver: process.env.AFS_DB || (process.env.DATABASE_URL ? 'pg' : 'sqlite'),
+  dbFile: process.env.AFS_WEB_DB || path.join(WEB_ROOT, 'data', 'afs.db'),
+  pgliteDir: process.env.AFS_PGLITE_DIR || null,
   maxLoginAttempts: num('AFS_MAX_LOGIN_ATTEMPTS', 5),
   lockoutMinutes: num('AFS_LOCKOUT_MINUTES', 15),
   sessionTimeoutMinutes: num('AFS_SESSION_TIMEOUT_MINUTES', 30),

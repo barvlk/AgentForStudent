@@ -29,15 +29,15 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 export function buildTools(studentId) {
   const impl = {
     search_study_notes: ({ query = '' }) => svc.knowledge.searchText(String(query).slice(0, 300)),
-    get_my_priority_tasks: () => formatReport(svc.scheduledTasks(studentId)),
-    get_my_learning_analytics: () => {
-      const a = svc.analytics(studentId);
+    get_my_priority_tasks: async () => formatReport(await svc.scheduledTasks(studentId)),
+    get_my_learning_analytics: async () => {
+      const a = await svc.analytics(studentId);
       return ['تحليل الإتقان وخطر التعثر لكل مجال:', ...Object.entries(a.mastery).map(([d, e]) =>
         `- ${DOMAIN_LABELS[d] ?? d}: الإتقان ${pct(e.probability)} (${e.label}، ${e.observations} مقررات) | خطر التعثر في المقرر القادم: ${a.risk[d] != null ? pct(a.risk[d]) : 'غير متاح'}`)].join('\n');
     },
-    get_my_weekly_study_plan: ({ weekly_hours = 10 }) => planToText(svc.weeklyPlan(studentId, Math.min(Math.max(Number(weekly_hours) || 10, 1), 60))),
-    simulate_gpa: ({ hours = 3, grade = 'A' }) => {
-      try { return simulateGpa(svc.profile(studentId), Math.min(Math.max(Number(hours) || 3, 1), 12), grade); } catch (e) { return `تعذر الحساب: ${e.message}`; }
+    get_my_weekly_study_plan: async ({ weekly_hours = 10 }) => planToText(await svc.weeklyPlan(studentId, Math.min(Math.max(Number(weekly_hours) || 10, 1), 60))),
+    simulate_gpa: async ({ hours = 3, grade = 'A' }) => {
+      try { return simulateGpa(await svc.profile(studentId), Math.min(Math.max(Number(hours) || 3, 1), 12), grade); } catch (e) { return `تعذر الحساب: ${e.message}`; }
     },
     calculate: ({ expression = '' }) => {
       try { return String(Math.round(safeCalculate(expression) * 1e6) / 1e6); } catch (e) { return e instanceof UnsafeExpressionError ? `تعذر الحساب: ${e.message}` : 'تعذر الحساب.'; }
@@ -143,12 +143,12 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
           return { reply: text, mode: 'gemini', tools: used };
         }
         turn.push({ role: 'model', parts });
-        const responses = calls.map(({ functionCall: fc }) => {
+        const responses = await Promise.all(calls.map(async ({ functionCall: fc }) => {
           used.push(fc.name);
           let result = 'أداة غير معروفة.';
-          try { if (impl[fc.name]) result = impl[fc.name](fc.args ?? {}); } catch { result = 'تعذر تنفيذ الأداة.'; }
+          try { if (impl[fc.name]) result = await impl[fc.name](fc.args ?? {}); } catch { result = 'تعذر تنفيذ الأداة.'; }
           return { functionResponse: { name: fc.name, response: { result } } };
-        });
+        }));
         turn.push({ role: 'user', parts: responses });
       }
       throw new GeminiError(0, 'too many tool steps');
@@ -163,8 +163,8 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
 // ---------------------------------------------------------------- المحرك المحلي (يرد دائماً)
 const has = (t, words) => words.some((w) => t.includes(normalizeArabic(w)));
 
-function tasksReply(studentId) {
-  const items = svc.scheduledTasks(studentId);
+async function tasksReply(studentId) {
+  const items = await svc.scheduledTasks(studentId);
   if (!items.length) return 'لا توجد لديك مهام معلقة حالياً. يمكنك الاستفادة من الوقت في مراجعة المجالات التي تحتاج إلى تقوية.';
   const urgent = items.filter((s) => s.overdue || (s.days_left != null && s.days_left <= 2));
   return [
@@ -176,8 +176,8 @@ function tasksReply(studentId) {
   ].join('\n');
 }
 
-function analyticsReply(studentId) {
-  const a = svc.analytics(studentId);
+async function analyticsReply(studentId) {
+  const a = await svc.analytics(studentId);
   const rows = Object.entries(a.mastery).map(([d, e]) => ({ d, e, r: a.risk[d] }));
   const weakest = [...rows].sort((x, y) => x.e.probability - y.e.probability)[0];
   const strongest = [...rows].sort((x, y) => y.e.probability - x.e.probability)[0];
@@ -190,10 +190,10 @@ function analyticsReply(studentId) {
   ].join('\n');
 }
 
-function planReply(studentId, text) {
+async function planReply(studentId, text) {
   const m = text.match(/(\d+(?:\.\d+)?)\s*(?:ساع|hour|h\b)/i);
   const hours = m ? Math.min(Math.max(Number(m[1]), 1), 60) : 10;
-  const plan = svc.weeklyPlan(studentId, hours);
+  const plan = await svc.weeklyPlan(studentId, hours);
   return [
     `**خطة المذاكرة الأسبوعية (${hours} ساعة):**`, '',
     ...plan.focus.filter((f) => f.hours > 0).map((f) => `• **${f.label}**: ${f.hours} ساعة — إتقان ${pct(f.mastery)}، خطر ${pct(f.risk)}`),
@@ -202,7 +202,7 @@ function planReply(studentId, text) {
   ].join('\n');
 }
 
-export function localReply(studentId, message, profile) {
+export async function localReply(studentId, message, profile) {
   const t = normalizeArabic(message);
   const tools = [];
   const done = (reply, tool) => { if (tool) tools.push(tool); return { reply, mode: 'local', tools }; };
@@ -214,9 +214,9 @@ export function localReply(studentId, message, profile) {
     try { return done(`**محاكاة المعدل**\n\n${simulateGpa(profile, Number(hoursTok), gradeTok)}`, 'simulate_gpa'); } catch { /* تابع للمحرك العام */ }
   }
 
-  if (has(t, ['خطه', 'جدول', 'اذاكر', 'مذاكره', 'ذاكر', 'plan', 'study'])) return done(planReply(studentId, message), 'get_my_weekly_study_plan');
-  if (has(t, ['مهام', 'مهمه', 'واجب', 'كويز', 'موعد', 'تسليم', 'اولويه', 'مواعيد', 'deadline', 'task'])) return done(tasksReply(studentId), 'get_my_priority_tasks');
-  if (has(t, ['ضعف', 'ضعيف', 'اتقان', 'تحليل', 'مستواي', 'مستوى', 'خطر', 'تعثر', 'مجال', 'قوه', 'قوي', 'اقوى'])) return done(analyticsReply(studentId), 'get_my_learning_analytics');
+  if (has(t, ['خطه', 'جدول', 'اذاكر', 'مذاكره', 'ذاكر', 'plan', 'study'])) return done(await planReply(studentId, message), 'get_my_weekly_study_plan');
+  if (has(t, ['مهام', 'مهمه', 'واجب', 'كويز', 'موعد', 'تسليم', 'اولويه', 'مواعيد', 'deadline', 'task'])) return done(await tasksReply(studentId), 'get_my_priority_tasks');
+  if (has(t, ['ضعف', 'ضعيف', 'اتقان', 'تحليل', 'مستواي', 'مستوى', 'خطر', 'تعثر', 'مجال', 'قوه', 'قوي', 'اقوى'])) return done(await analyticsReply(studentId), 'get_my_learning_analytics');
 
   const expr = message.replace(/[xX×]/g, '*').replace(/÷/g, '/').match(/[\d.\s()+\-*/%]{3,}/g)?.sort((a, b) => b.length - a.length)[0]?.trim();
   if (expr && /\d/.test(expr) && /[+\-*/%]/.test(expr)) {
@@ -249,14 +249,14 @@ export function localReply(studentId, message, profile) {
 // ---------------------------------------------------------------- الواجهة
 export async function chat(sessionId, studentId, rawMessage) {
   const message = String(rawMessage ?? '').trim().slice(0, MAX_MESSAGE);
-  if (!message) throw new Error('الرسالة فارغة.');
-  const profile = svc.profile(studentId);
+  if (!message) throw new svc.ValidationError('الرسالة فارغة.');
+  const profile = await svc.profile(studentId);
   if (!config.geminiKey) return localReply(studentId, message, profile);
   try {
-    return await askGemini(sessionId, studentId, message, profile, svc.transcript(studentId));
+    return await askGemini(sessionId, studentId, message, profile, await svc.transcript(studentId));
   } catch (e) {
     console.warn(`[chat] Gemini unavailable (${e.status ?? e.name}); using local engine`);
-    return { ...localReply(studentId, message, profile), fallback: true };
+    return { ...(await localReply(studentId, message, profile)), fallback: true };
   }
 }
 

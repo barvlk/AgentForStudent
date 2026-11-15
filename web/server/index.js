@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config, WEB_ROOT } from './config.js';
-import { audit } from './db.js';
+import { audit, backend } from './db.js';
 import * as auth from './auth.js';
 import * as svc from './services.js';
 import { chat, clearChat } from './chat.js';
@@ -77,25 +77,25 @@ route('POST', '/api/login', async (ctx) => {
   const { student_id, password } = await readJson(ctx.req);
   const sid = Number(String(student_id ?? '').trim());
   if (!Number.isSafeInteger(sid) || sid <= 0 || typeof password !== 'string' || !password) throw new HttpError(400, 'أدخل رقماً جامعياً صحيحاً وكلمة المرور.');
-  if (sid === config.demoId) auth.ensureFixedPassword(sid, config.demoPassword);
-  const r = auth.authenticate(sid, password);
+  if (sid === config.demoId) await auth.ensureFixedPassword(sid, config.demoPassword);
+  const r = await auth.authenticate(sid, password);
   if (r.status === 'locked') throw new HttpError(423, `تم قفل الحساب مؤقتاً بسبب محاولات متكررة. حاول بعد ${r.minutesLeft} دقيقة.`);
-  if (r.status !== 'ok' || !svc.profile(sid)) throw new HttpError(401, 'الرقم الجامعي أو كلمة المرور غير صحيحة.'); // رسالة موحّدة
-  const token = auth.createSession(sid);
+  if (r.status !== 'ok' || !(await svc.profile(sid))) throw new HttpError(401, 'الرقم الجامعي أو كلمة المرور غير صحيحة.'); // رسالة موحّدة
+  const token = await auth.createSession(sid);
   ctx.headers['Set-Cookie'] = setCookie(token, config.sessionTimeoutMinutes * 60 * 4);
   return { ok: true, must_change_password: r.mustChange };
 }, { public: true });
 
-route('POST', '/api/logout', (ctx) => {
-  audit('logout', ctx.session.studentId);
+route('POST', '/api/logout', async (ctx) => {
+  await audit('logout', ctx.session.studentId);
   clearChat(ctx.session.id);
-  auth.destroySession(ctx.token);
+  await auth.destroySession(ctx.token);
   ctx.headers['Set-Cookie'] = setCookie('', 0);
   return { ok: true };
 }, { allowMustChange: true });
 
-route('GET', '/api/me', (ctx) => {
-  const p = svc.profile(ctx.session.studentId);
+route('GET', '/api/me', async (ctx) => {
+  const p = await svc.profile(ctx.session.studentId);
   if (!p) throw new HttpError(404, 'تعذر العثور على سجلك الأكاديمي.');
   return { profile: p, must_change_password: ctx.session.mustChange, is_demo: ctx.session.studentId === config.demoId, ai: !!config.geminiKey };
 }, { allowMustChange: true });
@@ -104,20 +104,20 @@ route('POST', '/api/change-password', async (ctx) => {
   if (ctx.session.studentId === config.demoId) throw new HttpError(403, 'لا يمكن تغيير كلمة مرور الحساب التجريبي.');
   const { old_password, new_password } = await readJson(ctx.req);
   try {
-    if (!auth.changePassword(ctx.session.studentId, String(old_password ?? ''), String(new_password ?? ''))) throw new HttpError(400, 'كلمة المرور الحالية غير صحيحة.');
+    if (!(await auth.changePassword(ctx.session.studentId, String(old_password ?? ''), String(new_password ?? '')))) throw new HttpError(400, 'كلمة المرور الحالية غير صحيحة.');
   } catch (e) { if (e instanceof auth.PasswordPolicyError) throw new HttpError(400, e.message); throw e; }
   ctx.headers['Set-Cookie'] = setCookie('', 0); // الجلسات القديمة أُنهيت: يلزم دخول جديد
   return { ok: true };
 }, { allowMustChange: true });
 
-route('GET', '/api/dashboard', (ctx) => {
+route('GET', '/api/dashboard', async (ctx) => {
   const sid = ctx.session.studentId;
-  const a = svc.analytics(sid);
-  const transcript = svc.transcript(sid);
+  const a = await svc.analytics(sid);
+  const transcript = await svc.transcript(sid);
   const byTerm = {};
   for (const r of transcript) if (r.score != null) (byTerm[r.term_no] ??= []).push(r.score);
   return {
-    profile: svc.profile(sid),
+    profile: await svc.profile(sid),
     mastery: Object.entries(a.mastery).map(([domain, e]) => ({ ...e, domain, label_ar: DOMAIN_LABELS[domain], risk: a.risk[domain] ?? null })),
     terms: Object.entries(byTerm).map(([term, s]) => ({ term: Number(term), avg: Math.round((s.reduce((x, y) => x + y, 0) / s.length) * 10) / 10 })),
     transcript: transcript.map(({ student_id, name, level, domain, ...r }) => ({ ...r, domain })),
@@ -125,30 +125,31 @@ route('GET', '/api/dashboard', (ctx) => {
   };
 });
 
-route('GET', '/api/plan', (ctx) => {
+route('GET', '/api/plan', async (ctx) => {
   const hours = Math.min(Math.max(Number(ctx.url.searchParams.get('hours')) || 10, 1), 60);
-  return svc.weeklyPlan(ctx.session.studentId, hours);
+  return await svc.weeklyPlan(ctx.session.studentId, hours);
 });
 
-route('GET', '/api/tasks', (ctx) => ({ tasks: svc.scheduledTasks(ctx.session.studentId) }));
+route('GET', '/api/tasks', async (ctx) => ({ tasks: await svc.scheduledTasks(ctx.session.studentId) }));
 route('POST', '/api/tasks', async (ctx) => {
-  try { const id = svc.addTask(ctx.session.studentId, await readJson(ctx.req)); audit('task_added', ctx.session.studentId); return { ok: true, id: Number(id) }; }
-  catch (e) { if (e instanceof HttpError) throw e; throw new HttpError(400, e.message); }
+  const body = await readJson(ctx.req);
+  try { const id = await svc.addTask(ctx.session.studentId, body); await audit('task_added', ctx.session.studentId); return { ok: true, id: Number(id) }; }
+  catch (e) { if (e instanceof svc.ValidationError) throw new HttpError(400, e.message); throw e; }
 });
 route('PATCH', '/api/tasks/:id', async (ctx) => {
   const { done } = await readJson(ctx.req);
-  if (!svc.setTaskDone(ctx.session.studentId, Number(ctx.params.id), done !== false)) throw new HttpError(404, 'المهمة غير موجودة.');
+  if (!(await svc.setTaskDone(ctx.session.studentId, Number(ctx.params.id), done !== false))) throw new HttpError(404, 'المهمة غير موجودة.');
   return { ok: true };
 });
-route('DELETE', '/api/tasks/:id', (ctx) => {
-  if (!svc.deleteTask(ctx.session.studentId, Number(ctx.params.id))) throw new HttpError(404, 'المهمة غير موجودة.');
+route('DELETE', '/api/tasks/:id', async (ctx) => {
+  if (!(await svc.deleteTask(ctx.session.studentId, Number(ctx.params.id)))) throw new HttpError(404, 'المهمة غير موجودة.');
   return { ok: true };
 });
 
 route('POST', '/api/chat', async (ctx) => {
   rateLimit(ctx.ip, 'chat', 30, 60000);
   const { message } = await readJson(ctx.req);
-  try { return await chat(ctx.session.id, ctx.session.studentId, message); } catch (e) { throw new HttpError(400, e.message); }
+  try { return await chat(ctx.session.id, ctx.session.studentId, message); } catch (e) { if (e instanceof svc.ValidationError) throw new HttpError(400, e.message); throw e; }
 });
 route('DELETE', '/api/chat', (ctx) => { clearChat(ctx.session.id); return { ok: true }; });
 
@@ -176,7 +177,7 @@ export const server = http.createServer(async (req, res) => {
     const token = parseCookies(req.headers.cookie)[COOKIE];
     const ctx = { req, url, params: r.re.exec(url.pathname).groups ?? {}, ip: req.socket.remoteAddress ?? '', headers: {}, token, session: null };
     if (!r.isPublic) {
-      ctx.session = auth.getSession(token);
+      ctx.session = await auth.getSession(token);
       if (!ctx.session) throw new HttpError(401, 'انتهت الجلسة. سجّل دخولك مرة أخرى.');
       if (ctx.session.mustChange && !r.allowMustChange) {
         throw new HttpError(403, 'يجب تغيير كلمة المرور أولاً.');
@@ -193,8 +194,9 @@ export const server = http.createServer(async (req, res) => {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const t0 = Date.now();
-  svc.bootstrap();
-  console.log(`✔ تم تجهيز البيانات وتدريب نموذج التنبؤ في ${Date.now() - t0}ms — ROC-AUC = ${svc.riskModel.metrics.roc_auc}`);
+  await svc.bootstrap();
+  setInterval(() => auth.purgeExpiredSessions().catch(() => {}), 10 * 60000).unref();
+  console.log(`✔ قاعدة البيانات: ${backend} · تم تجهيز البيانات وتدريب نموذج التنبؤ في ${Date.now() - t0}ms — ROC-AUC = ${svc.riskModel.metrics.roc_auc}`);
   server.listen(config.port, () => {
     console.log(`✔ AgentForStudent جاهز على http://localhost:${config.port}`);
     console.log(config.geminiKey ? '✔ Gemini مفعّل (مع محرك محلي احتياطي)' : 'ℹ بدون GEMINI_API_KEY: المحادثة تعمل بالمحرك المحلي');
