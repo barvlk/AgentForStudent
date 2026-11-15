@@ -20,7 +20,7 @@ export function renderChat(root, { profile, ai }) {
   root.innerHTML = `
   <div class="card chat fade-in">
     <div class="chat-head">
-      <div style="flex:1"><h3>المساعد الأكاديمي</h3><small><span class="dot ${ai ? '' : 'off'}"></span>${ai ? 'متصل بخدمة الذكاء الاصطناعي' : 'الوضع المحلي'}</small></div>
+      <div style="flex:1"><h3>المساعد الأكاديمي</h3><small><span class="dot ${ai ? '' : 'off'}" id="ai-dot"></span><span id="ai-status">${ai ? 'متصل بخدمة الذكاء الاصطناعي' : 'الوضع المحلي'}</span></small></div>
       <button class="btn sm ghost" id="clear-chat" title="بدء محادثة جديدة">${icon('refresh')} محادثة جديدة</button>
     </div>
     <div class="msgs" id="msgs" aria-live="polite"></div>
@@ -50,6 +50,10 @@ export function renderChat(root, { profile, ai }) {
     scroll();
     try {
       const r = await api.chat(text);
+      if (ai) {
+        $('#ai-dot', root)?.classList.toggle('off', !!r.fallback);
+        const st = $('#ai-status', root); if (st) st.textContent = r.fallback ? 'يعمل بالمحرك المحلي مؤقتاً' : 'متصل بخدمة الذكاء الاصطناعي';
+      }
       const engine = r.mode === 'gemini' ? 'المحرك: Gemini' : r.fallback ? 'المحرك: محلي احتياطي (تعذّر الاتصال بـ Gemini)' : 'المحرك: محلي';
       messages.push({ role: 'bot', text: r.reply, tag: [engine, r.tools?.length ? `الأدوات: ${r.tools.join('، ')}` : ''].filter(Boolean).join(' · ') });
     } catch (e) {

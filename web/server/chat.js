@@ -132,8 +132,8 @@ async function generateWithRetry(model, body, deadline) {
     const left = deadline - Date.now();
     if (left < 2000) throw new GeminiError(0, 'deadline exceeded');
     try { return await generate(model, body, Math.min(12000, left)); } catch (e) {
-      if (!isTransient(e) || attempt >= 1) throw e;
-      await sleep(Math.min(1500 * 2 ** attempt, Math.max(0, deadline - Date.now() - 2000)));
+      if (!isTransient(e) || attempt >= 3) throw e; // انقطاع الشبكة يفشل سريعاً فمحاولاتنا رخيصة؛ والمهلة الكلية تحمينا من الإطالة
+      await sleep(Math.min(700 * 2 ** attempt, Math.max(0, deadline - Date.now() - 2000)));
     }
   }
 }
