@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: agentforstudent
+    runtime: node
+    rootDir: web
+    buildCommand: echo "no build step"
+    startCommand: node --disable-warning=ExperimentalWarning server/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: AFS_DEMO_STUDENT_ID
+        value: "441126225"
+      - key: AFS_DEMO_PASSWORD
+        value: "Demo2026x"
+      - key: GEMINI_API_KEY
+        sync: false
