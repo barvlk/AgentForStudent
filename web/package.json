@@ -11,12 +11,14 @@
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
     "test": "node --disable-warning=ExperimentalWarning --test test/",
     "test:pg": "node --disable-warning=ExperimentalWarning --test test/api.pg.test.js",
-    "db:status": "node --disable-warning=ExperimentalWarning server/cli.js status"
+    "db:status": "node --disable-warning=ExperimentalWarning server/cli.js status",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.3.16"
+    "@electric-sql/pglite": "^0.3.16",
+    "@playwright/test": "^1.65.1"
   }
 }

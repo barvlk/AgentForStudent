@@ -51,6 +51,7 @@ export function renderChat(root, { profile, ai }) {
     try {
       const r = await api.chat(text);
       if (ai) {
+        window.dispatchEvent(new CustomEvent('ai-status', { detail: { ok: !r.fallback } }));
         $('#ai-dot', root)?.classList.toggle('off', !!r.fallback);
         const st = $('#ai-status', root); if (st) st.textContent = r.fallback ? 'يعمل بالمحرك المحلي مؤقتاً' : 'متصل بخدمة الذكاء الاصطناعي';
       }

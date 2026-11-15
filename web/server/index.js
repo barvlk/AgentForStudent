@@ -7,7 +7,7 @@ import { config, WEB_ROOT } from './config.js';
 import { audit, backend } from './db.js';
 import * as auth from './auth.js';
 import * as svc from './services.js';
-import { chat, clearChat } from './chat.js';
+import { chat, clearChat, geminiAvailable } from './chat.js';
 import { PRIORITIES } from './ml/scheduler.js';
 import { DOMAIN_LABELS } from './ml/planner.js';
 
@@ -66,7 +66,7 @@ const routes = [];
 const route = (method, pattern, handler, { public: isPublic = false, allowMustChange = false } = {}) =>
   routes.push({ method, re: new RegExp(`^${pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)')}$`), handler, isPublic, allowMustChange });
 
-route('GET', '/api/health', () => ({ ok: true, ai: !!config.geminiKey }), { public: true });
+route('GET', '/api/health', () => ({ ok: true, ai: !!config.geminiKey, ai_available: geminiAvailable() }), { public: true });
 
 route('GET', '/api/config', () => ({
   demo: { id: config.demoId, password: config.demoPassword }, ai: !!config.geminiKey, priorities: PRIORITIES, domain_labels: DOMAIN_LABELS,
@@ -97,7 +97,7 @@ route('POST', '/api/logout', async (ctx) => {
 route('GET', '/api/me', async (ctx) => {
   const p = await svc.profile(ctx.session.studentId);
   if (!p) throw new HttpError(404, 'تعذر العثور على سجلك الأكاديمي.');
-  return { profile: p, must_change_password: ctx.session.mustChange, is_demo: ctx.session.studentId === config.demoId, ai: !!config.geminiKey };
+  return { profile: p, must_change_password: ctx.session.mustChange, is_demo: ctx.session.studentId === config.demoId, ai: !!config.geminiKey, ai_available: geminiAvailable() };
 }, { allowMustChange: true });
 
 route('POST', '/api/change-password', async (ctx) => {

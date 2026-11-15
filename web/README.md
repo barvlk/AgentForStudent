@@ -10,6 +10,7 @@
 cd web
 npm install        # يثبّت pg (ومكتبة الاختبار PGlite)
 npm start          # http://localhost:3000   (يتطلب Node 22.5+)
+npm run test:e2e   # 14 اختبار واجهة في متصفح حقيقي (سطح المكتب والجوال)
 npm test           # 50 اختباراً (SQLite + PostgreSQL + الخوارزميات + الحاسبة)
 npm run db:status  # نوع القاعدة وعدد صفوف كل جدول
 ```

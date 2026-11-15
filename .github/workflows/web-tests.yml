@@ -40,6 +40,19 @@ jobs:
         run: npm test
         env:
           GEMINI_API_KEY: ""
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests (Playwright, desktop and mobile)
+        run: npm run test:e2e
+        env:
+          CI: "true"
+          GEMINI_API_KEY: ""
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7
       - name: Tests on a real PostgreSQL server (pg driver)
         run: npm run test:pg
         env:

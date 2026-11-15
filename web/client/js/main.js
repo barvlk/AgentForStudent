@@ -14,6 +14,7 @@ const state = { me: null, tab: ['dashboard', 'tasks', 'gpa', 'chat'].includes(in
 
 setUnauthorizedHandler((msg) => { if (state.me) { state.me = null; resetChat(); state.flash = msg || 'انتهت الجلسة. الرجاء تسجيل الدخول مرة أخرى.'; boot(); } });
 
+const aiLabel = (ai, ok) => (!ai ? 'المساعد: الوضع المحلي' : ok ? 'الذكاء الاصطناعي: متصل' : 'الذكاء الاصطناعي: متعذّر مؤقتاً (يعمل المحرك المحلي)');
 const TABS = [
   ['dashboard', 'chart', 'لوحة الأداء'],
   ['tasks', 'calendar', 'المهام'],
@@ -53,7 +54,7 @@ function renderShell() {
       <nav class="nav" aria-label="التنقل">${TABS.map(([k, i, l]) => `<button data-tab="${k}">${icon(i)}<span>${l}</span><span class="badge" id="badge-${k}" hidden></span></button>`).join('')}</nav>
       <div class="side-foot">
         <div class="status">
-          <div><span class="dot ${state.me.ai ? '' : 'off'}"></span>${state.me.ai ? 'الذكاء الاصطناعي: متصل' : 'المساعد: الوضع المحلي'}</div>
+          <div id="ai-side"><span class="dot ${state.me.ai && state.me.ai_available ? '' : 'off'}"></span><span>${aiLabel(state.me.ai, state.me.ai_available)}</span></div>
           <div><span class="dot"></span>نموذج التنبؤ: جاهز</div>
         </div>
         ${state.me.is_demo ? '' : `<button class="btn sm" id="chg-pw">${icon('key')} تغيير كلمة المرور</button>`}
@@ -115,5 +116,13 @@ async function logout() {
   state.flash = 'تم تسجيل الخروج.';
   boot();
 }
+
+// يحدّث الشريط الجانبي بعد كل رد في الشات بحسب المحرك الذي ردّ فعلاً
+window.addEventListener('ai-status', (e) => {
+  if (!state.me?.ai) return;
+  state.me.ai_available = e.detail.ok;
+  const el = document.getElementById('ai-side');
+  if (el) el.innerHTML = `<span class="dot ${e.detail.ok ? '' : 'off'}"></span><span>${aiLabel(true, e.detail.ok)}</span>`;
+});
 
 boot();

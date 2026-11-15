@@ -29,3 +29,7 @@ venv/
 # Node web app
 web/data/
 node_modules/
+
+# Playwright
+web/test-results/
+web/playwright-report/

@@ -114,6 +114,7 @@ cd AgentForStudent/web
 npm install
 npm start            # http://localhost:3000
 npm test             # 50 اختباراً (SQLite + PostgreSQL)
+npm run test:e2e     # 14 اختبار واجهة بمتصفح حقيقي (يلزم: npx playwright install chromium)
 ```
 
 عند أول تشغيل ينشئ النظام جداول القاعدة، ويولّد 100 طالب وهمي، ويدرّب نموذج التنبؤ، وينشئ حساب العرض. محلياً تُحفظ البيانات في `web/data/afs.db` (SQLite). للمحادثة عبر Gemini ولربط PostgreSQL أنشئ ملف `.env` في جذر المشروع:

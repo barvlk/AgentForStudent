@@ -140,6 +140,8 @@ async function generateWithRetry(model, body, deadline) {
 
 // قاطع الدائرة: إذا فشل Gemini لعطل في الاتصال، نتجاوزه دقيقة كاملة فيرد المحرك المحلي فوراً بدل أن ينتظر كل طالب مهلة كاملة
 let geminiDownUntil = 0;
+// حالة Gemini الفعلية للواجهة: false أثناء فترة التجاوز بعد فشل الاتصال
+export const geminiAvailable = () => !!config.geminiKey && Date.now() >= geminiDownUntil;
 let workingModel = null;
 async function askGemini(sessionId, studentId, message, profile, transcript) {
   const { impl, declarations } = buildTools(studentId);
@@ -167,6 +169,7 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
           turn.push({ role: 'model', parts: [{ text }] });
           histories.set(sessionId, turn.slice(-MAX_HISTORY));
           workingModel = model;
+          geminiDownUntil = 0;
           return { reply: text, mode: 'gemini', tools: used };
         }
         turn.push({ role: 'model', parts });
