@@ -17,7 +17,7 @@ setUnauthorizedHandler((msg) => { if (state.me) { state.me = null; resetChat(); 
 const TABS = [
   ['dashboard', 'chart', 'لوحة الأداء'],
   ['tasks', 'calendar', 'المهام'],
-  ['gpa', 'calc', 'حاسبة المعدل'],
+  ['gpa', 'calc', 'المعدل'],
   ['chat', 'chat', 'المساعد'],
 ];
 const TITLES = { chat: 'المساعد الأكاديمي', dashboard: 'لوحة الأداء الأكاديمي', tasks: 'المهام والمواعيد', gpa: 'حاسبة المعدل' };

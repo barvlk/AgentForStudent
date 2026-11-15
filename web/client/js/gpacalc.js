@@ -1,5 +1,6 @@
 // صفحة حاسبة المعدل: فصلي وتراكمي، سلم 4 أو 5، وجدول "ماذا لو" والمعدل المطلوب.
-import { esc, $, $$ } from './ui.js';
+import { esc, $, $$, toast } from './ui.js';
+import { api } from './api.js';
 import { icon } from './icons.js';
 import { SCALES, LETTER_LIST, semesterGpa, cumulative, whatIf, requiredAverage } from './gpa.js';
 
@@ -67,6 +68,16 @@ export function renderGpaCalc(root, { profile }) {
         </div>
         <div class="result" id="target-result"></div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <h3>السيناريوهات المحفوظة</h3>
+      <p class="sub">احفظ المقررات والمعدل المدخلين الآن باسم تختاره، وارجع لها لاحقاً لمقارنة الخيارات (حتى 20 سيناريو).</p>
+      <div class="save-row">
+        <input class="input" id="sc-name" maxlength="60" placeholder="اسم السيناريو، مثال: لو رفعت الخوارزميات" aria-label="اسم السيناريو">
+        <button class="btn primary sm" id="sc-save" type="button">حفظ السيناريو</button>
+      </div>
+      <div id="sc-list" class="sc-list"></div>
     </div>
 
     <details class="card" style="margin-top:1rem">
@@ -174,6 +185,56 @@ export function renderGpaCalc(root, { profile }) {
   $('#what-hours', root).addEventListener('change', (e) => { state.whatHours = Number(e.target.value); update(); });
   $('#target', root).addEventListener('input', (e) => { state.target = e.target.value; update(); });
   $('#next-hours', root).addEventListener('input', (e) => { state.nextHours = e.target.value; update(); });
+
+  // ---- السيناريوهات المحفوظة ----
+  const drawScenarios = async () => {
+    const box = $('#sc-list', root);
+    try {
+      const { scenarios } = await api.scenarios();
+      box.innerHTML = scenarios.length ? scenarios.map((s) => `
+        <div class="sc-item" data-id="${s.id}">
+          <div class="sc-info"><b>${esc(s.name)}</b>
+            <small>${s.courses.length} مقررات · سلم ${s.scale}.00 · النتيجة <b dir="ltr">${fmt(s.result_gpa)}</b></small></div>
+          <div class="sc-actions">
+            <button class="btn sm" data-load type="button">تحميل</button>
+            <button class="btn sm icon danger" data-del-sc type="button" title="حذف" aria-label="حذف السيناريو">${icon('trash')}</button>
+          </div>
+        </div>`).join('') : '<p class="muted" style="margin:0">لا توجد سيناريوهات محفوظة بعد.</p>';
+      box.__data = scenarios;
+    } catch (e) { box.innerHTML = err(e.message); }
+  };
+  $('#sc-save', root).addEventListener('click', async () => {
+    const sc = state.scale;
+    try {
+      await api.saveScenario({
+        name: $('#sc-name', root).value, scale: sc, prev_gpa: parseFloat(state.prev[sc]), prev_hours: parseFloat(state.prevHours),
+        courses: state.rows.map((r) => ({ name: r.name, hours: Number(r.hours), letter: r.letter })),
+      });
+      $('#sc-name', root).value = '';
+      toast('تم حفظ السيناريو.', 'ok');
+      drawScenarios();
+    } catch (e) { toast(e.message, 'warn'); }
+  });
+  $('#sc-list', root).addEventListener('click', async (e) => {
+    const item = e.target.closest('.sc-item');
+    if (!item) return;
+    const id = Number(item.dataset.id);
+    if (e.target.closest('[data-del-sc]')) {
+      try { await api.deleteScenario(id); drawScenarios(); } catch (x) { toast(x.message, 'warn'); }
+    } else if (e.target.closest('[data-load]')) {
+      const s = $('#sc-list', root).__data?.find((x) => x.id === id);
+      if (!s) return;
+      state.scale = s.scale;
+      state.prev[s.scale] = String(s.prev_gpa);
+      state.prevHours = String(s.prev_hours);
+      state.rows = s.courses.map((c) => ({ name: c.name, hours: c.hours, letter: c.letter }));
+      $('#prev-gpa', root).value = state.prev[s.scale];
+      $('#prev-hours', root).value = state.prevHours;
+      drawRows(); update();
+      toast('تم تحميل السيناريو.', 'ok');
+    }
+  });
+  drawScenarios();
 
   $('#prev-gpa', root).value = state.prev[state.scale] ?? '';
   $('#prev-hours', root).value = state.prevHours ?? '';

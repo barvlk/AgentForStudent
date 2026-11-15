@@ -269,3 +269,21 @@ pre.trace { background: var(--surface-2); border: 1px solid var(--border); borde
   .task .acts { margin-inline-start: auto; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* سيناريوهات المعدل المحفوظة */
+.save-row { display: flex; gap: .6rem; margin-bottom: .8rem; }
+.save-row .input { flex: 1; min-width: 0; }
+.sc-list { display: grid; gap: .5rem; }
+.sc-item { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .6rem .8rem; border: 1px solid var(--border, #d5deef); border-radius: 10px; background: #f8faff; }
+.sc-info { display: grid; gap: .15rem; min-width: 0; }
+.sc-info b { overflow-wrap: anywhere; }
+.sc-info small { color: var(--muted, #5b6b8c); }
+.sc-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+@media (max-width: 520px) { .save-row { flex-direction: column; } .sc-item { flex-direction: column; align-items: stretch; } .sc-actions { justify-content: flex-end; } }
+
+/* تحسينات الجوال: ارتفاع الشاشة الفعلي (dvh) يستبعد شريط المتصفح، وخط 16px يمنع تكبير iOS تلقائياً عند التركيز */
+@media (max-width: 860px) {
+  .chat { height: calc(100vh - 11rem); height: calc(100dvh - 11rem); }
+  .input, select.input, textarea.input { font-size: 16px; }
+  .mobile-nav button { white-space: nowrap; min-height: 44px; }
+}

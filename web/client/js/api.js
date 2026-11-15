@@ -38,6 +38,9 @@ export const api = {
   addTask: (task) => request('POST', '/api/tasks', task),
   doneTask: (id) => request('PATCH', `/api/tasks/${id}`, { done: true }),
   deleteTask: (id) => request('DELETE', `/api/tasks/${id}`),
+  scenarios: () => request('GET', '/api/gpa/scenarios'),
+  saveScenario: (s) => request('POST', '/api/gpa/scenarios', s),
+  deleteScenario: (id) => request('DELETE', `/api/gpa/scenarios/${id}`),
   chat: (message) => request('POST', '/api/chat', { message }),
   clearChat: () => request('DELETE', '/api/chat'),
 };

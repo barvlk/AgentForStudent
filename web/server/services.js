@@ -9,6 +9,7 @@ import { RiskModel } from './ml/risk.js';
 import { schedule, PRIORITIES } from './ml/scheduler.js';
 import { buildWeeklyPlan } from './ml/planner.js';
 import { KnowledgeBase } from './ml/knowledge.js';
+import { cumulative } from '../client/js/gpa.js';
 
 export class ValidationError extends Error {}
 
@@ -116,3 +117,33 @@ export async function weeklyPlan(studentId, hours = 10) {
   const a = await analytics(studentId);
   return buildWeeklyPlan(a.mastery, a.risk, await scheduledTasks(studentId), hours);
 }
+
+// ---------------------------------------------------------------- سيناريوهات المعدل المحفوظة
+// النتيجة تُعاد حسابها في الخادم (لا نثق بقيمة العميل)، وكل استعلام مقيَّد بـ student_id.
+const MAX_SCENARIOS = 20;
+
+export async function listScenarios(studentId) {
+  return (await all('SELECT * FROM gpa_scenarios WHERE student_id = ? ORDER BY id DESC', [studentId]))
+    .map((r) => ({ ...r, courses: JSON.parse(r.courses) }));
+}
+
+export async function saveScenario(studentId, { name, scale, prev_gpa, prev_hours, courses }) {
+  name = String(name ?? '').trim().slice(0, 60);
+  if (!name) throw new ValidationError('اكتب اسماً للسيناريو.');
+  scale = Number(scale);
+  if (![4, 5].includes(scale)) throw new ValidationError('سلم غير مدعوم.');
+  if (!Array.isArray(courses) || !courses.length || courses.length > 12) throw new ValidationError('أضف من 1 إلى 12 مقرراً.');
+  const clean = courses.map((c) => ({ name: String(c?.name ?? '').trim().slice(0, 60), hours: Number(c?.hours), letter: String(c?.letter ?? '') }));
+  let result;
+  try { result = cumulative(Number(prev_gpa), Number(prev_hours), clean, scale); } catch (e) { throw new ValidationError(e.message); }
+  if ((await get('SELECT COUNT(*) AS c FROM gpa_scenarios WHERE student_id = ?', [studentId])).c >= MAX_SCENARIOS) {
+    throw new ValidationError(`الحد الأقصى ${MAX_SCENARIOS} سيناريو؛ احذف أحدها أولاً.`);
+  }
+  return insert(
+    'INSERT INTO gpa_scenarios (student_id, name, scale, prev_gpa, prev_hours, courses, result_gpa, created_at) VALUES (?,?,?,?,?,?,?,?)',
+    [studentId, name, scale, Number(prev_gpa), Number(prev_hours), JSON.stringify(clean), result.gpa, Date.now()],
+  );
+}
+
+export const deleteScenario = async (studentId, id) =>
+  (await run('DELETE FROM gpa_scenarios WHERE id = ? AND student_id = ?', [id, studentId])).changes > 0;

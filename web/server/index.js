@@ -146,6 +146,17 @@ route('DELETE', '/api/tasks/:id', async (ctx) => {
   return { ok: true };
 });
 
+route('GET', '/api/gpa/scenarios', async (ctx) => ({ scenarios: await svc.listScenarios(ctx.session.studentId) }));
+route('POST', '/api/gpa/scenarios', async (ctx) => {
+  const body = await readJson(ctx.req);
+  try { return { ok: true, id: Number(await svc.saveScenario(ctx.session.studentId, body)) }; }
+  catch (e) { if (e instanceof svc.ValidationError) throw new HttpError(400, e.message); throw e; }
+});
+route('DELETE', '/api/gpa/scenarios/:id', async (ctx) => {
+  if (!(await svc.deleteScenario(ctx.session.studentId, Number(ctx.params.id)))) throw new HttpError(404, 'السيناريو غير موجود.');
+  return { ok: true };
+});
+
 route('POST', '/api/chat', async (ctx) => {
   rateLimit(ctx.ip, 'chat', 30, 60000);
   const { message } = await readJson(ctx.req);

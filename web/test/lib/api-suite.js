@@ -33,7 +33,7 @@ export function defineApiTests(label) {
   test(`[${label}] backend and migrations`, async () => {
     assert.equal(dbm.backend, { sqlite: 'SQLite', pglite: 'PostgreSQL (PGlite)', pg: 'PostgreSQL' }[label]);
     const m = await dbm.all('SELECT id FROM schema_migrations');
-    assert.deepEqual(m.map((r) => r.id), ['001_init']);
+    assert.deepEqual(m.map((r) => r.id).sort(), ['001_init', '002_gpa_scenarios']);
   });
 
   test(`[${label}] data is loaded into normalized tables`, async () => {
@@ -176,5 +176,39 @@ export function defineApiTests(label) {
   test(`[${label}] path traversal is blocked`, async () => {
     const text = await (await fetch(base + '/..%2f..%2fserver%2fconfig.js')).text();
     assert.ok(!text.includes('loadDotEnv'));
+  });
+  test(`[${label}] saved GPA scenarios: CRUD, server-side result, validation, IDOR`, async () => {
+    const c = await login();
+    const body = { name: 'لو رفعت الخوارزميات', scale: 4, prev_gpa: 3.37, prev_hours: 71, courses: [{ name: 'x', hours: 4, letter: 'A+' }] };
+    assert.equal((await call('POST', '/api/gpa/scenarios', body)).status, 401);
+    // النتيجة تُحسب في الخادم حتى لو أرسل العميل قيمة مزيّفة
+    const add = await call('POST', '/api/gpa/scenarios', { ...body, result_gpa: 9.99 }, c);
+    assert.equal(add.status, 200);
+    const list = (await call('GET', '/api/gpa/scenarios', undefined, c)).data.scenarios;
+    const mine = list.find((s) => s.id === add.data.id);
+    assert.equal(mine.result_gpa, 3.4);
+    assert.deepEqual(mine.courses, [{ name: 'x', hours: 4, letter: 'A+' }]);
+    for (const bad of [{ ...body, name: ' ' }, { ...body, scale: 6 }, { ...body, courses: [] }, { ...body, courses: [{ hours: 3, letter: 'Z' }] }, { ...body, prev_gpa: 9 }]) {
+      assert.equal((await call('POST', '/api/gpa/scenarios', bad, c)).status, 400);
+    }
+    // طالب آخر لا يستطيع حذف سيناريو غيره
+    const [other] = await otherStudents(1);
+    const oid = await svc.saveScenario(other, body);
+    assert.equal((await call('DELETE', `/api/gpa/scenarios/${oid}`, undefined, c)).status, 404);
+    assert.ok(await dbm.get('SELECT 1 AS x FROM gpa_scenarios WHERE id = ?', [oid]));
+    assert.ok(!(await call('GET', '/api/gpa/scenarios', undefined, c)).data.scenarios.some((s) => s.id === oid));
+    assert.equal((await call('DELETE', `/api/gpa/scenarios/${add.data.id}`, undefined, c)).status, 200);
+  });
+  test(`[${label}] local chat engine answers greetings and compound questions`, async () => {
+    const c = await login();
+    const ask = async (message) => (await call('POST', '/api/chat', { message }, c)).data;
+    const hi = await ask('سلام عليكم');
+    assert.equal(hi.mode, 'local');
+    assert.ok(/أهلاً/.test(hi.reply) && !hi.tools.length);
+    const both = await ask('وش مهامي وكيف ادرس اليوم');
+    assert.ok(both.tools.includes('get_my_priority_tasks') && both.tools.includes('get_my_weekly_study_plan'));
+    assert.ok(both.reply.includes('---'));
+    assert.ok(!(await ask('كيف حالك')).reply.includes('لم يتضح'));
+    assert.ok((await ask('qwertyuiop')).reply.includes('لم يتضح'));
   });
 }
