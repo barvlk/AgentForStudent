@@ -10,6 +10,15 @@
 
 > An intelligent academic assistant: Bayesian Knowledge Tracing + Random-Forest risk prediction + a tool-using Gemini agent, behind an authenticated, encrypted Streamlit portal.
 
+## 🌐 جرّب الموقع مباشرة
+
+**https://agentforstudent.onrender.com/**
+
+- الرقم الجامعي: `441126225` · كلمة المرور: `Demo2026x` (بيانات وهمية)
+- النسخة الجديدة: باك اند **Node.js** وفرونت اند **HTML/CSS/JavaScript** داخل مجلد [`web/`](web/)، والشرح الكامل للخوارزميات في [web/README.md](web/README.md)
+- الاستضافة المجانية تنام بعد فترة خمول، فأول فتح قد يتأخر نحو 30 ثانية
+- نسخة Streamlit/Python القديمة باقية في جذر المشروع
+
 ## لقطات من النظام
 
 > اللقطات من بيانات تجريبية اصطناعية (أسماء ودرجات وهمية).
