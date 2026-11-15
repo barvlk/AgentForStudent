@@ -112,24 +112,28 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class GeminiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
-async function generate(model, body) {
+async function generate(model, body, timeoutMs = 25000) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': config.geminiKey },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new GeminiError(res.status, `Gemini HTTP ${res.status}`);
   return res.json();
 }
 
-// إعادة محاولة بانتظار متزايد (Exponential Backoff) للأخطاء المؤقتة فقط
-async function generateWithRetry(model, body) {
+// أخطاء مؤقتة: حدّ الاستخدام/ازدحام الخادم، أو انقطاع شبكة عابر (ECONNRESET و"fetch failed") أو انتهاء المهلة
+const isTransient = (e) => (e instanceof GeminiError && RETRYABLE.has(e.status)) || e.name === 'TimeoutError' || (e instanceof TypeError && /fetch failed/i.test(e.message));
+
+// إعادة محاولة بانتظار متزايد (Exponential Backoff) للأخطاء المؤقتة فقط، ضمن مهلة كلية للطلب
+async function generateWithRetry(model, body, deadline) {
   for (let attempt = 0; ; attempt++) {
-    try { return await generate(model, body); } catch (e) {
-      const retry = (e instanceof GeminiError && RETRYABLE.has(e.status)) || e.name === 'TimeoutError';
-      if (!retry || attempt >= 1) throw e;
-      await sleep(1500 * 2 ** attempt);
+    const left = deadline - Date.now();
+    if (left < 2000) throw new GeminiError(0, 'deadline exceeded');
+    try { return await generate(model, body, Math.min(25000, left)); } catch (e) {
+      if (!isTransient(e) || attempt >= 1) throw e;
+      await sleep(Math.min(1500 * 2 ** attempt, Math.max(0, deadline - Date.now() - 2000)));
     }
   }
 }
@@ -139,7 +143,9 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
   const { impl, declarations } = buildTools(studentId);
   const contents = [...(histories.get(sessionId) ?? []), { role: 'user', parts: [{ text: message }] }];
   const used = [];
-  const candidates = [...new Set([workingModel, config.geminiModel, 'gemini-3.6-flash', 'gemini-2.5-flash'].filter(Boolean))];
+  const candidates = [...new Set([workingModel, config.geminiModel, 'gemini-3.6-flash', 'gemini-3.8-flash'].filter(Boolean))];
+  let lastError = null;
+  const deadline = Date.now() + 40000; // مهلة كلية للطلب مهما تعددت المحاولات والنماذج
 
   for (const model of candidates) {
     try {
@@ -150,7 +156,7 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
           contents: turn,
           tools: [{ functionDeclarations: declarations }],
           generationConfig: { temperature: config.temperature },
-        });
+        }, deadline);
         const parts = data.candidates?.[0]?.content?.parts ?? [];
         const calls = parts.filter((p) => p.functionCall);
         if (!calls.length) {
@@ -172,11 +178,13 @@ async function askGemini(sessionId, studentId, message, profile, transcript) {
       }
       throw new GeminiError(0, 'too many tool steps');
     } catch (e) {
-      if (e instanceof GeminiError && (e.status === 404 || e.status === 400)) continue; // اسم نموذج غير صالح → جرّب التالي
+      // نموذج غير صالح/محذوف (404، 400) أو عطل مؤقت لا يزول بإعادة المحاولة → جرّب النموذج التالي. مفتاح مرفوض (401/403) → توقف.
+      if (e instanceof GeminiError && e.status === 0 && e.message === 'deadline exceeded') throw e;
+      if ((e instanceof GeminiError && (e.status === 404 || e.status === 400)) || isTransient(e)) { lastError = e; continue; }
       throw e;
     }
   }
-  throw new GeminiError(404, 'no usable model');
+  throw lastError ?? new GeminiError(404, 'no usable model');
 }
 
 // ---------------------------------------------------------------- المحرك المحلي (يرد دائماً)
