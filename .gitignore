@@ -25,3 +25,7 @@ venv/
 # --- IDE ---
 .idea/
 .vscode/
+
+# Node web app
+web/data/
+node_modules/

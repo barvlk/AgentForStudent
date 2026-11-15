@@ -1,0 +1,12 @@
+{
+  "name": "agentforstudent-web",
+  "version": "1.0.0",
+  "description": "AgentForStudent — Node.js backend + vanilla JS frontend",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/"
+  }
+}
