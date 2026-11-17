@@ -3,7 +3,7 @@ import { esc, $, pct, goodColor, riskColor, scoreColor, animateBars, toast } fro
 import { icon } from './icons.js';
 import { ring, sparkline, lineChart, hBars, radar, donut } from './charts.js';
 
-const DOMAIN_COLOR = { AI: '#1e4fb3', Math: '#b45309', Programming: '#0e7490', Systems: '#475569' };
+const DOMAIN_COLOR = { AI: '#2f5fe0', Math: '#b45309', Programming: '#0e7490', Systems: '#475569' };
 const FEATURE_LABELS = {
   prev_avg_score: 'متوسط الدرجات السابق', prev_gpa: 'المعدل السابق', domain_prior_avg: 'متوسطك في نفس المجال',
   domain_prior_count: 'عدد مقررات المجال', prev_fail_count: 'مرات الرسوب', credits: 'ساعات المقرر', term_no: 'رقم الترم',
@@ -36,10 +36,10 @@ export async function renderDashboard(root) {
         <h3>نظرة عامة على المجالات</h3>
         <p class="sub">كلما اتسع نطاق الإتقان وضاق نطاق الخطر، كان الوضع الأكاديمي أفضل.</p>
         ${radar(d.mastery.map((m) => m.label_ar.split(' ')[0]), [
-    { values: d.mastery.map((m) => m.probability), color: '#1e4fb3' },
+    { values: d.mastery.map((m) => m.probability), color: '#2f5fe0' },
     { values: d.mastery.map((m) => m.risk ?? 0), color: '#b42318' },
   ])}
-        <div class="legend"><span><i style="background:#1e4fb3"></i>الإتقان</span><span><i style="background:#b42318"></i>خطر التعثر</span></div>
+        <div class="legend"><span><i style="background:#2f5fe0"></i>الإتقان</span><span><i style="background:#b42318"></i>خطر التعثر</span></div>
         ${weakest ? `<div class="alert info" style="margin:1rem 0 0">أولى المجالات بالتركيز: <b>${esc(weakest.label_ar)}</b> (إتقان ${pct(weakest.probability)})</div>` : ''}
       </div>
       <div class="card">

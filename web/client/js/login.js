@@ -1,31 +1,35 @@
 import { api, ApiError } from './api.js';
 import { esc, $ } from './ui.js';
 import { icon } from './icons.js';
+import { heroArt } from './hero-art.js';
 
-const POINTS = [
-  ['تحليل مستوى الإتقان', 'قياس إتقانك لكل مجال دراسي اعتماداً على سجلك الأكاديمي.'],
-  ['التنبؤ بخطر التعثر', 'تقدير احتمال انخفاض الأداء في المقررات القادمة قبل وقوعه.'],
-  ['تنظيم المهام والمواعيد', 'ترتيب الواجبات حسب الأهمية وقرب موعد التسليم.'],
-  ['خطة مذاكرة أسبوعية', 'توزيع ساعات المذاكرة على المجالات بحسب احتياجك الفعلي.'],
+// مزايا مختصرة تظهر كشارات تحت الرسمة: [أيقونة، نص]
+// النص قصير عن قصد: الرسمة هي اللي تشرح الفكرة، والشارات بس تأكدها.
+const FEATURES = [
+  ['chart', 'تحليل مستوى الإتقان'],
+  ['alert', 'التنبؤ بخطر التعثر'],
+  ['list', 'ترتيب المهام بالأولوية'],
+  ['calendar', 'خطة مذاكرة أسبوعية'],
 ];
 
 export function renderLogin(root, { onLoggedIn, flash }) {
   root.innerHTML = `
   <main class="login">
     <section class="hero">
-      <div>
-        <div class="logo"><b>${icon('book')}</b><span>جامعة أم القرى<small>نظام المساعد الأكاديمي</small></span></div>
-        <div style="margin-top:3rem">
-          <h1>نظام المساعد الأكاديمي للطلاب</h1>
-          <p class="lead">منصة تساعد الطالب على متابعة أدائه الدراسي، وتحديد مجالات التحسين، وتنظيم وقته ومهامه.</p>
-          <ul class="points">${POINTS.map(([t, d], i) => `<li><span class="n">0${i + 1}</span><div><b>${t}</b><span class="d">${d}</span></div></li>`).join('')}</ul>
-        </div>
+      <div class="logo"><b>${icon('book')}</b><span>جامعة أم القرى<small>نظام المساعد الأكاديمي</small></span></div>
+      <div class="hero-copy">
+        <span class="eyebrow">مساعد أكاديمي ذكي</span>
+        <h1>من زحمة الواجبات<br><span class="grad-text">إلى خطة واضحة</span></h1>
+        <p class="lead">يرتّب مهامك حسب الأولوية وقرب التسليم، ويكشف المقررات المعرّضة للتعثر مبكراً، ويبني لك خطة مذاكرة أسبوعية تناسبك.</p>
       </div>
+      <div class="hero-art">${heroArt()}</div>
+      <ul class="features">${FEATURES.map(([ic, t]) => `<li><span class="fi">${icon(ic)}</span>${t}</li>`).join('')}</ul>
       <div class="foot">جميع البيانات المعروضة في هذه النسخة بيانات تجريبية.</div>
     </section>
     <section class="login-panel">
       <form class="card login-card fade-in" id="login-form" novalidate>
         <h2>تسجيل الدخول</h2>
+        <p class="hello">أهلاً بك، ادخل برقمك الجامعي للمتابعة.</p>
         <div class="rule"></div>
         ${flash ? `<div class="alert info">${esc(flash)}</div>` : ''}
         <div id="demo-box"></div>

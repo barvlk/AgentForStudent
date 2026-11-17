@@ -29,7 +29,7 @@ export function sparkline(values, color = 'var(--accent)') {
 }
 
 // رسم خطي مع تعبئة (متوسط الدرجات لكل ترم)
-export function lineChart(data, { min = 50, max = 100, color = '#1e4fb3' } = {}) {
+export function lineChart(data, { min = 50, max = 100, color = '#2f5fe0' } = {}) {
   if (!data.length) return '';
   const W = 520, H = 330, L = 34, R = 14, T = 16, B = 30;
   const x = (i) => (data.length === 1 ? W / 2 : L + (i * (W - L - R)) / (data.length - 1));
